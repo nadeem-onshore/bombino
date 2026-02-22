@@ -1,0 +1,210 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU79TR_V.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU79TR_V.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU79TR_V.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU79TR_V.woff2) format('woff2');
+}
+
+:root {
+  --background: 247 247 249;
+  --foreground: 17 24 39;
+  --card: 255 255 255;
+  --card-foreground: 17 24 39;
+  --popover: 255 255 255;
+  --popover-foreground: 17 24 39;
+  --primary: 198 40 40;
+  --primary-foreground: 255 255 255;
+  --secondary: 243 244 246;
+  --secondary-foreground: 17 24 39;
+  --muted: 243 244 246;
+  --muted-foreground: 107 114 128;
+  --accent: 254 242 242;
+  --accent-foreground: 153 27 27;
+  --destructive: 239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border: 229 231 235;
+  --input: 229 231 235;
+  --ring: 198 40 40;
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: oklch(from rgb(var(--background)) l c h);
+  --color-foreground: oklch(from rgb(var(--foreground)) l c h);
+  --color-card: oklch(from rgb(var(--card)) l c h);
+  --color-card-foreground: oklch(from rgb(var(--card-foreground)) l c h);
+  --color-popover: oklch(from rgb(var(--popover)) l c h);
+  --color-popover-foreground: oklch(from rgb(var(--popover-foreground)) l c h);
+  --color-primary: oklch(from rgb(var(--primary)) l c h);
+  --color-primary-foreground: oklch(from rgb(var(--primary-foreground)) l c h);
+  --color-secondary: oklch(from rgb(var(--secondary)) l c h);
+  --color-secondary-foreground: oklch(from rgb(var(--secondary-foreground)) l c h);
+  --color-muted: oklch(from rgb(var(--muted)) l c h);
+  --color-muted-foreground: oklch(from rgb(var(--muted-foreground)) l c h);
+  --color-accent: oklch(from rgb(var(--accent)) l c h);
+  --color-accent-foreground: oklch(from rgb(var(--accent-foreground)) l c h);
+  --color-destructive: oklch(from rgb(var(--destructive)) l c h);
+  --color-destructive-foreground: oklch(from rgb(var(--destructive-foreground)) l c h);
+  --color-border: oklch(from rgb(var(--border)) l c h);
+  --color-input: oklch(from rgb(var(--input)) l c h);
+  --color-ring: oklch(from rgb(var(--ring)) l c h);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0;
+    transform: translateY(6px); 
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0); 
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(198, 40, 40, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.card-elevated {
+  @apply bg-card rounded-2xl border border-border shadow-[0_6px_20px_rgba(0,0,0,0.06)] transition-shadow;
+}
+
+.card-elevated:hover {
+  @apply shadow-[0_8px_24px_rgba(0,0,0,0.08)];
+}
+
+.card-elevated:active {
+  @apply shadow-[0_4px_16px_rgba(0,0,0,0.06)];
+}
+
+.icon-container {
+  @apply w-11 h-11 rounded-xl bg-gradient-to-br from-primary/12 to-primary/6 flex items-center justify-center transition-all;
+}
+
+.icon-container:active {
+  @apply scale-95 from-primary/16 to-primary/10;
+}
+
+.btn-primary {
+  @apply bg-primary hover:bg-primary/90 active:scale-[0.97] transition-all shadow-lg shadow-primary/20;
+}
+
+input:focus {
+  @apply ring-[3px] ring-primary/12 border-primary transition-all duration-150;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.page-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+.section-header {
+  @apply text-sm font-medium text-foreground;
+}
+
+.body-text {
+  @apply text-sm text-muted-foreground leading-relaxed;
+}
