@@ -71,7 +71,7 @@ export default function Profile() {
             <User className="w-10 h-10 text-primary" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">
-            {user?.firstName} {user?.lastName}
+            {user?.fullName}
           </h2>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
         </div>
@@ -91,8 +91,8 @@ export default function Profile() {
               <Phone className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-[10px] text-muted-foreground">Phone</p>
-              <p className="font-medium text-sm">{user?.phone}</p>
+              <p className="text-[10px] text-muted-foreground">Username</p>
+              <p className="font-medium text-sm">{user?.username}</p>
             </div>
           </div>
         </div>

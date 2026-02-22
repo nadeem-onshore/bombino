@@ -1,6 +1,7 @@
 import { X, User, LogOut, LogIn, HelpCircle, MessageCircle, Phone } from 'lucide-react';
 import { Link } from 'wouter';
 import { useAppStore } from '@/lib/store';
+import { apiRequest } from '@/lib/queryClient';
 import bombinoLogo from '@assets/image_1768167970562.png';
 
 interface SideMenuProps {
@@ -42,7 +43,7 @@ export function SideMenu({ isOpen, onClose }: SideMenuProps) {
               </div>
               <div>
                 <p className="font-semibold text-foreground">
-                  {isLoggedIn ? `${user?.firstName} ${user?.lastName}` : 'Guest'}
+                  {isLoggedIn ? (user?.fullName || user?.email) : 'Guest'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isLoggedIn ? user?.email : 'Sign in to continue'}
@@ -67,6 +68,7 @@ export function SideMenu({ isOpen, onClose }: SideMenuProps) {
                 </Link>
                 <button
                   onClick={() => {
+                    apiRequest('POST', '/api/auth/logout').catch(() => {});
                     logout();
                     onClose();
                   }}

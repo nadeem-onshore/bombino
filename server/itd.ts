@@ -8,6 +8,15 @@ const APP_BASE = "https://app.bombinoexp.com";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface ITDUserInfo {
+  id: string;
+  customerId: string;
+  email: string;
+  fullName: string;
+  username: string;
+  role: string;
+}
+
 export interface ITDAuthResponse {
   success: boolean;
   data: {
@@ -150,7 +159,7 @@ class ITDClient {
   private token: string | null = null;
   private tokenExpiry: number = 0;
 
-  // Fetch and cache Bearer token. Re-authenticates when expired.
+  // Fetch and cache Bearer token using company credentials. Re-authenticates when expired.
   async getToken(): Promise<string> {
     if (this.token && Date.now() < this.tokenExpiry) {
       return this.token;
@@ -181,15 +190,57 @@ class ITDClient {
     return this.token;
   }
 
-  // Invalidate cached token (called on 401 responses)
+  // Authenticate a user with their own credentials (not the company token).
+  // Returns the user's token + info — caller must store in session.
+  async loginUser(
+    email: string,
+    password: string
+  ): Promise<{ token: string; user: ITDUserInfo }> {
+    const res = await fetch(`${ADMIN_BASE}/docket_api/get_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        company_id: Number(process.env.ITD_COMPANY_ID),
+        email,
+        password,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`ITD auth failed: ${res.status} ${res.statusText}`);
+    }
+
+    const json = (await res.json()) as ITDAuthResponse;
+    if (!json.success || !json.data?.token) {
+      const errMsg = json.errors?.join(", ") || "Invalid credentials";
+      throw new Error(errMsg);
+    }
+
+    const user: ITDUserInfo = {
+      id: json.data.id,
+      customerId: json.data.customer_id,
+      email: json.data.email,
+      fullName: json.data.user_fullname,
+      username: json.data.username,
+      role: json.data.role,
+    };
+
+    return { token: json.data.token, user };
+  }
+
+  // Invalidate cached company token (called on 401 responses)
   private invalidateToken(): void {
     this.token = null;
     this.tokenExpiry = 0;
   }
 
   // GET /api/tracking_api/get_tracking_data
-  async trackShipment(trackingNo: string): Promise<ITDTrackingResult[]> {
-    const token = await this.getToken();
+  // Uses the provided user token if given, otherwise falls back to the shared company token.
+  async trackShipment(
+    trackingNo: string,
+    token?: string
+  ): Promise<ITDTrackingResult[]> {
+    const authToken = token ?? (await this.getToken());
     const params = new URLSearchParams({
       api_company_id: process.env.ITD_API_COMPANY_ID ?? "2",
       customer_code: process.env.ITD_CUSTOMER_CODE ?? "",
@@ -199,12 +250,12 @@ class ITDClient {
     const res = await fetch(
       `${ADMIN_BASE}/api/tracking_api/get_tracking_data?${params}`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       }
     );
 
     if (res.status === 401) {
-      this.invalidateToken();
+      if (!token) this.invalidateToken();
       throw new Error("ITD token expired — please retry");
     }
     if (!res.ok) {
@@ -214,12 +265,11 @@ class ITDClient {
     return (await res.json()) as ITDTrackingResult[];
   }
 
-  // POST /docket_api/create_docket
+  // POST /docket_api/create_docket — always requires a user session token
   async createShipment(
-    data: CreateShipmentPayload
+    data: CreateShipmentPayload,
+    token: string
   ): Promise<CreateShipmentResponse> {
-    const token = await this.getToken();
-
     const res = await fetch(`${ADMIN_BASE}/docket_api/create_docket`, {
       method: "POST",
       headers: {
@@ -230,8 +280,7 @@ class ITDClient {
     });
 
     if (res.status === 401) {
-      this.invalidateToken();
-      throw new Error("ITD token expired — please retry");
+      throw new Error("Session expired — please log in again");
     }
     if (!res.ok) {
       throw new Error(

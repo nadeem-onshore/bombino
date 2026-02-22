@@ -1,7 +1,8 @@
 # Bombino Express — CLAUDE.md
 
 ## Project Overview
-USA-to-India shipping logistics platform. Features: shipment tracking, rate calculator, booking flow, user auth, and push notifications. Phase 1 (MVP) — frontend complete with mock data; backend API routes not yet implemented.
+USA-to-India shipping logistics platform. Features: shipment tracking, rate calculator, booking flow, user auth, and push notifications. 
+Phase 1 (MVP) — frontend integrated with available backend API with reference to api-spec.md.
 
 ## Tech Stack
 | Layer | Technologies |

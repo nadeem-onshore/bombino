@@ -1,41 +1,43 @@
 import { useState } from 'react';
-import { ArrowLeft, Mail, Phone, Key } from 'lucide-react';
-import { useLocation, Link } from 'wouter';
+import { ArrowLeft, Mail, Lock, Loader2 } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAppStore, demoUser } from '@/lib/store';
+import { useAppStore, type AuthUser } from '@/lib/store';
+import { apiRequest } from '@/lib/queryClient';
 import bombinoLogo from '@assets/generated_images/bombino_express_logo_design.png';
-import { cn } from '@/lib/utils';
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login } = useAppStore();
-  const [step, setStep] = useState<'input' | 'otp'>('input');
-  const [emailOrPhone, setEmailOrPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [generatedOTP, setGeneratedOTP] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendOTP = () => {
-    if (!emailOrPhone.trim()) {
-      setError('Please enter your email or phone number');
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password');
       return;
     }
-    const newOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOTP(newOTP);
-    setStep('otp');
-    setError('');
-  };
 
-  const handleVerifyOTP = () => {
-    if (otp === generatedOTP) {
-      login(demoUser);
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await apiRequest('POST', '/api/auth/login', { email: email.trim(), password });
+      const user = (await res.json()) as AuthUser;
+      login(user);
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect') || '/home';
       setLocation(redirect);
-    } else {
-      setError('Invalid OTP. Please try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      // Strip the leading status code if present (e.g. "401: Invalid credentials")
+      setError(message.replace(/^\d+:\s*/, ''));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,105 +62,58 @@ export default function Login() {
           <p className="text-sm text-muted-foreground">Bringing the world closer</p>
         </div>
 
-        {step === 'input' ? (
-          <div className="space-y-6 animate-fade-in">
-            <div>
-              <Label className="text-sm font-medium">Email or Mobile Number</Label>
-              <div className="relative mt-2">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  value={emailOrPhone}
-                  onChange={(e) => {
-                    setEmailOrPhone(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="Enter email or phone"
-                  className="pl-10 h-14"
-                  data-testid="input-email-phone"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-
-            <Button
-              onClick={handleSendOTP}
-              className="w-full h-14 text-base font-semibold bg-primary hover:bg-primary/90"
-              data-testid="button-send-otp"
-            >
-              Send OTP
-            </Button>
-
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link href="/signup" className="text-primary font-semibold hover:underline">
-                  Sign up
-                </Link>
-              </p>
-            </div>
-
-            <div className="text-center">
-              <Link href="/login" className="text-sm text-muted-foreground hover:underline">
-                Forgot access?
-              </Link>
+        <div className="space-y-6 animate-fade-in">
+          <div>
+            <Label className="text-sm font-medium">Email</Label>
+            <div className="relative mt-2">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                placeholder="Enter your email"
+                className="pl-10 h-14"
+                autoComplete="email"
+                data-testid="input-email"
+              />
             </div>
           </div>
-        ) : (
-          <div className="space-y-6 animate-fade-in">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-              <p className="text-sm text-emerald-700">Demo OTP (enter this code):</p>
-              <p className="text-3xl font-bold text-emerald-700 tracking-widest mt-2">
-                {generatedOTP}
-              </p>
+
+          <div>
+            <Label className="text-sm font-medium">Password</Label>
+            <div className="relative mt-2">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                placeholder="Enter your password"
+                className="pl-10 h-14"
+                autoComplete="current-password"
+                data-testid="input-password"
+              />
             </div>
-
-            <div>
-              <Label className="text-sm font-medium">Enter OTP</Label>
-              <div className="relative mt-2">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                    setError('');
-                  }}
-                  placeholder="6-digit OTP"
-                  className="pl-10 h-14 text-center text-xl tracking-widest"
-                  maxLength={6}
-                  data-testid="input-otp"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-
-            <Button
-              onClick={handleVerifyOTP}
-              disabled={otp.length !== 6}
-              className="w-full h-14 text-base font-semibold bg-primary hover:bg-primary/90 disabled:opacity-50"
-              data-testid="button-verify-otp"
-            >
-              Verify & Sign In
-            </Button>
-
-            <button
-              onClick={() => {
-                setStep('input');
-                setOtp('');
-                setError('');
-              }}
-              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-              data-testid="button-change-number"
-            >
-              Change email/phone
-            </button>
           </div>
-        )}
+
+          {error && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
+
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="w-full h-14 text-base font-semibold bg-primary hover:bg-primary/90 disabled:opacity-70"
+            data-testid="button-sign-in"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              'Sign In'
+            )}
+          </Button>
+        </div>
       </main>
     </div>
   );

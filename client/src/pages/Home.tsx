@@ -39,7 +39,7 @@ export default function Home() {
       <main className="px-4 py-5 max-w-md mx-auto space-y-6">
         {isLoggedIn && (
           <p className="text-muted-foreground text-sm -mb-2">
-            Welcome back, <span className="font-semibold text-foreground">{user?.firstName}</span>
+            Welcome back, <span className="font-semibold text-foreground">{user?.fullName?.split(' ')[0] || user?.email}</span>
           </p>
         )}
 
