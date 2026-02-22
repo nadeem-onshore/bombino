@@ -1,10 +1,34 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "pg";
+import { registerRoutes, passport } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
 const httpServer = createServer(app);
+
+// ─── Session + Auth ───────────────────────────────────────────────────────────
+const PgStore = connectPgSimple(session);
+const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.use(
+  session({
+    store: new PgStore({ pool: sessionPool, createTableIfMissing: true }),
+    secret: process.env.SESSION_SECRET ?? "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 declare module "http" {
   interface IncomingMessage {
