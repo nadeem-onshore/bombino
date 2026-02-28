@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { Pool } from "pg";
-import { registerRoutes, passport } from "./routes";
+import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
@@ -27,8 +27,6 @@ app.use(
     },
   })
 );
-app.use(passport.initialize());
-app.use(passport.session());
 
 declare module "http" {
   interface IncomingMessage {
