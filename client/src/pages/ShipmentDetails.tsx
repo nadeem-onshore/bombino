@@ -71,7 +71,7 @@ export default function ShipmentDetails() {
         <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
           <div className="flex items-center h-14 px-4 max-w-md mx-auto">
             <button
-              onClick={() => setLocation(-1 as unknown as string)}
+              onClick={() => window.history.back()}
               className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -129,7 +129,7 @@ export default function ShipmentDetails() {
       <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
-            onClick={() => setLocation(-1 as unknown as string)}
+            onClick={() => window.history.back()}
             className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
             data-testid="button-back"
           >

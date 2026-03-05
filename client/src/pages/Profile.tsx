@@ -55,7 +55,7 @@ export default function Profile() {
       <header className="sticky top-0 z-50 bg-white border-b border-border safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
-            onClick={() => setLocation(-1 as any)}
+            onClick={() => window.history.back()}
             className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
             data-testid="button-back-profile"
           >

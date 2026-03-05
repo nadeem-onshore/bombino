@@ -22,7 +22,7 @@ export default function Notifications() {
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
-            onClick={() => setLocation(-1 as any)}
+            onClick={() => window.history.back()}
             className="p-2 -ml-2 rounded-xl hover:bg-muted active:scale-95 transition-all"
             data-testid="button-back-notifications"
           >

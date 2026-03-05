@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { BottomNav } from '@/components/BottomNav';
@@ -10,6 +10,18 @@ import { useAppStore } from '@/lib/store';
 import { Shipment, TrackingEvent, lbToKg, inToCm } from '@/lib/mockData';
 import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+
+interface FreeFormLineItem {
+  total: string;
+  no_of_packages: string;
+  box_no: string;
+  rate: string;
+  hscode: string;
+  description: string;
+  unit_of_measurement: string;
+  unit_weight: string;
+  igst_amount: string;
+}
 
 interface CreateShipmentPayload {
   product_code: string;
@@ -23,6 +35,11 @@ interface CreateShipmentPayload {
   shipment_invoice_no: string;
   shipment_invoice_date: string;
   shipment_content: string;
+  new_docket_free_form_invoice?: string;
+  free_form_invoice_type_id?: string;
+  free_form_currency?: string;
+  terms_of_trade?: string;
+  entry_type?: number;
   api_service_code: string;
   shipper_name: string;
   shipper_company_name: string;
@@ -33,6 +50,8 @@ interface CreateShipmentPayload {
   shipper_state: string;
   shipper_country: string;
   shipper_zip_code: string;
+  shipper_gstin_type?: string;
+  shipper_gstin_no?: string;
   consignee_name: string;
   consignee_company_name: string;
   consignee_contact_no: string;
@@ -43,6 +62,7 @@ interface CreateShipmentPayload {
   consignee_country: string;
   consignee_zip_code: string;
   docket_items: { actual_weight: string; length: string; width: string; height: string; number_of_boxes: string }[];
+  free_form_line_items?: FreeFormLineItem[];
 }
 
 interface CreateShipmentResponse {
@@ -58,6 +78,7 @@ const steps = [
   { id: 1, title: 'Sender', icon: User },
   { id: 2, title: 'Receiver', icon: MapPin },
   { id: 3, title: 'Package', icon: Package },
+  { id: 4, title: 'Invoice', icon: FileText },
 ];
 
 export default function CreateShipment() {
@@ -70,6 +91,7 @@ export default function CreateShipment() {
   const [senderName, setSenderName] = useState(isLoggedIn ? user?.fullName ?? '' : '');
   const [senderEmail, setSenderEmail] = useState(isLoggedIn ? user?.email ?? '' : '');
   const [senderPhone, setSenderPhone] = useState('');
+  const [senderCompany, setSenderCompany] = useState('');
   const [senderCity, setSenderCity] = useState('');
   const [senderState, setSenderState] = useState('');
   const [senderZip, setSenderZip] = useState('');
@@ -78,13 +100,12 @@ export default function CreateShipment() {
   const [receiverName, setReceiverName] = useState('');
   const [receiverPhone, setReceiverPhone] = useState('');
   const [receiverEmail, setReceiverEmail] = useState('');
+  const [receiverCompany, setReceiverCompany] = useState('');
   const [receiverCity, setReceiverCity] = useState('');
   const [receiverState, setReceiverState] = useState('');
-  const [receiverPincode, setReceiverPincode] = useState('');
+  const [receiverZip, setReceiverZip] = useState('');
   const [receiverAddress, setReceiverAddress] = useState('');
 
-  const [productType, setProductType] = useState<'Document' | 'Package'>('Package');
-  const [serviceType, setServiceType] = useState<'Standard' | 'Express'>('Standard');
   const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
   const [weight, setWeight] = useState('2');
   const [pieces, setPieces] = useState('1');
@@ -92,6 +113,14 @@ export default function CreateShipment() {
   const [dimL, setDimL] = useState('');
   const [dimW, setDimW] = useState('');
   const [dimH, setDimH] = useState('');
+  const [shipmentValue, setShipmentValue] = useState('');
+  const [shipmentContent, setShipmentContent] = useState('');
+
+  const [invoiceQty, setInvoiceQty] = useState('1');
+  const [invoiceUnitWeight, setInvoiceUnitWeight] = useState('');
+  const [invoiceUnitRate, setInvoiceUnitRate] = useState('');
+
+  const [stepError, setStepError] = useState('');
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateShipmentPayload) =>
@@ -133,13 +162,13 @@ export default function CreateShipment() {
       }
 
       const eta = new Date();
-      eta.setDate(eta.getDate() + (serviceType === 'Express' ? 5 : 8));
+      eta.setDate(eta.getDate() + 5); // Bombino Premium DDP is express-grade
 
       const trackingEvents: TrackingEvent[] = [{
         id: `event-${Math.random().toString(36).slice(2)}`,
         status: 'Pickup Scheduled',
         note: 'Shipment pickup has been scheduled',
-        location: `${senderCity}, ${senderState}, USA`,
+        location: `${senderCity}, ${senderState}, India`,
         timestamp: now,
       }];
 
@@ -147,20 +176,20 @@ export default function CreateShipment() {
         id: Math.random().toString(36).slice(2),
         awb,
         userId: user?.id ?? '',
-        originCountry: 'USA',
+        originCountry: 'India',
         originCity: senderCity,
         originState: senderState,
         originZip: senderZip,
-        destCountry: 'India',
+        destCountry: 'USA',
         destCity: receiverCity,
         destState: receiverState,
-        destPincode: receiverPincode,
+        destPincode: receiverZip,
         weightLb: parseFloat(weightLb.toFixed(1)),
         weightKg: parseFloat(weightKg.toFixed(2)),
         pieces: parseInt(pieces) || 1,
         dimLIn, dimWIn, dimHIn, dimLCm, dimWCm, dimHCm,
-        productType,
-        serviceType,
+        productType: 'Package' as const,
+        serviceType: 'Express' as const,
         status: 'Pickup Scheduled',
         priceEstimate: 0,
         eta,
@@ -265,7 +294,34 @@ export default function CreateShipment() {
   }
 
   const handleNext = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
+    setStepError('');
+    if (currentStep === 1) {
+      if (!senderName.trim() || !senderPhone.trim() || !senderAddress.trim() || !senderCity.trim() || !senderState.trim() || !senderZip.trim()) {
+        setStepError('Please fill in all required sender fields.');
+        return;
+      }
+    }
+    if (currentStep === 2) {
+      if (!receiverName.trim() || !receiverPhone.trim() || !receiverAddress.trim() || !receiverCity.trim() || !receiverState.trim() || !receiverZip.trim()) {
+        setStepError('Please fill in all required receiver fields.');
+        return;
+      }
+    }
+    if (currentStep === 3) {
+      if (!weight || parseFloat(weight) <= 0) {
+        setStepError('Please enter a valid weight.');
+        return;
+      }
+      if (!shipmentValue || parseFloat(shipmentValue) <= 0) {
+        setStepError('Please enter a shipment value.');
+        return;
+      }
+      if (!shipmentContent.trim()) {
+        setStepError('Please describe the shipment content.');
+        return;
+      }
+    }
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
 
   const handleBack = () => {
@@ -286,49 +342,78 @@ export default function CreateShipment() {
     const weightLb = getWeightLb();
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().slice(0, 5);
+    const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
 
     const lengthVal = dimL ? (dimUnit === 'cm' ? String(parseFloat(dimL) / 2.54) : dimL) : '0';
     const widthVal = dimW ? (dimUnit === 'cm' ? String(parseFloat(dimW) / 2.54) : dimW) : '0';
     const heightVal = dimH ? (dimUnit === 'cm' ? String(parseFloat(dimH) / 2.54) : dimH) : '0';
 
+    const qty = parseInt(invoiceQty) || 1;
+    const rate = parseFloat(invoiceUnitRate) || 0;
+    const total = (qty * rate).toFixed(2);
+
     const payload: CreateShipmentPayload = {
-      product_code: productType === 'Document' ? 'DOC' : 'PKG',
-      destination_code: 'IN',
+      // TODO: product_code hardcoded — update when ITD provides final mapping
+      product_code: 'SPX',
+      destination_code: 'US',
       booking_date: todayStr,
       booking_time: timeStr,
       pcs: String(parseInt(pieces) || 1),
-      shipment_value: '0',
+      shipment_value: shipmentValue || '0',
       shipment_value_currency: 'USD',
       actual_weight: String(weightLb.toFixed(2)),
-      shipment_invoice_no: `INV-${Date.now()}`,
+      // TODO: shipment_invoice_no hardcoded — update when invoice numbering is implemented
+      shipment_invoice_no: 'TESTINV01',
       shipment_invoice_date: todayStr,
-      shipment_content: productType,
-      api_service_code: serviceType === 'Express' ? 'EXP' : 'STD',
+      shipment_content: shipmentContent || 'GIFTS',
+      new_docket_free_form_invoice: '1',
+      free_form_invoice_type_id: '1',
+      free_form_currency: 'USD',
+      terms_of_trade: 'FOB',
+      entry_type: 2,
+      // TODO: api_service_code hardcoded — update when ITD provides final mapping
+      api_service_code: 'BOMBINO PREMIUM DDP SERVICE',
       shipper_name: senderName,
-      shipper_company_name: senderName,
+      shipper_company_name: senderCompany || senderName,
       shipper_contact_no: senderPhone,
       shipper_email: senderEmail,
-      shipper_address_line_1: senderAddress || senderCity,
+      shipper_address_line_1: senderAddress,
       shipper_city: senderCity,
       shipper_state: senderState,
-      shipper_country: 'US',
+      shipper_country: 'IN',
       shipper_zip_code: senderZip,
+      // TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented
+      shipper_gstin_type: 'AADHAAR NUMBER',
+      // TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented
+      shipper_gstin_no: '123456789012',
       consignee_name: receiverName,
-      consignee_company_name: receiverName,
+      consignee_company_name: receiverCompany || receiverName,
       consignee_contact_no: receiverPhone,
       consignee_email: receiverEmail || senderEmail,
-      consignee_address_line_1: receiverAddress || receiverCity,
+      consignee_address_line_1: receiverAddress,
       consignee_city: receiverCity,
       consignee_state: receiverState,
-      consignee_country: 'IN',
-      consignee_zip_code: receiverPincode,
+      consignee_country: 'US',
+      consignee_zip_code: receiverZip,
       docket_items: [{
         actual_weight: String(weightLb.toFixed(2)),
         length: lengthVal,
         width: widthVal,
         height: heightVal,
         number_of_boxes: String(parseInt(pieces) || 1),
+      }],
+      free_form_line_items: [{
+        total,
+        no_of_packages: String(qty),
+        box_no: '1',
+        rate: String(rate),
+        // TODO: hscode hardcoded — update when HS code lookup is implemented
+        hscode: '456789',
+        // TODO: description hardcoded — update when item descriptions are configurable
+        description: 'GIFTS',
+        unit_of_measurement: 'PCS',
+        unit_weight: invoiceUnitWeight || '0.00',
+        igst_amount: '0.00',
       }],
     };
 
@@ -393,18 +478,28 @@ export default function CreateShipment() {
         {currentStep === 1 && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-              Origin: USA (fixed)
+              Origin: India (fixed)
             </div>
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
               <div>
-                <Label className="text-xs text-muted-foreground">Full Name</Label>
+                <Label className="text-xs text-muted-foreground">Full Name <span className="text-red-400">*</span></Label>
                 <Input
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
                   placeholder="John Doe"
                   className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                   data-testid="input-sender-name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
+                <Input
+                  value={senderCompany}
+                  onChange={(e) => setSenderCompany(e.target.value)}
+                  placeholder="Company name"
+                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  data-testid="input-sender-company"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -423,6 +518,7 @@ export default function CreateShipment() {
                   <Input
                     value={senderPhone}
                     onChange={(e) => setSenderPhone(e.target.value)}
+                    placeholder="+91"
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-sender-phone"
                   />
@@ -458,23 +554,48 @@ export default function CreateShipment() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">ZIP</Label>
+                  <Label className="text-xs text-muted-foreground">Pincode</Label>
                   <Input
                     value={senderZip}
                     onChange={(e) => setSenderZip(e.target.value)}
+                    maxLength={6}
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-sender-zip"
                   />
                 </div>
               </div>
             </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">KYC Details</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">Required for Indian customs export compliance.</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">KYC Type</span>
+                  {/* TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented */}
+                  <span className="font-medium text-foreground">AADHAAR NUMBER</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Aadhaar No.</span>
+                  {/* TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented */}
+                  <span className="font-medium text-foreground">123456789012</span>
+                </div>
+              </div>
+            </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
           </div>
         )}
 
         {currentStep === 2 && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-              Destination: India (fixed)
+              Destination: USA (fixed)
             </div>
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
@@ -487,13 +608,23 @@ export default function CreateShipment() {
                   data-testid="input-receiver-name"
                 />
               </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
+                <Input
+                  value={receiverCompany}
+                  onChange={(e) => setReceiverCompany(e.target.value)}
+                  placeholder="Company name"
+                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  data-testid="input-receiver-company"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Phone</Label>
                   <Input
                     value={receiverPhone}
                     onChange={(e) => setReceiverPhone(e.target.value)}
-                    placeholder="+91"
+                    placeholder="+1"
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-receiver-phone"
                   />
@@ -538,72 +669,29 @@ export default function CreateShipment() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Pincode</Label>
+                  <Label className="text-xs text-muted-foreground">ZIP Code</Label>
                   <Input
-                    value={receiverPincode}
-                    onChange={(e) => setReceiverPincode(e.target.value)}
-                    maxLength={6}
+                    value={receiverZip}
+                    onChange={(e) => setReceiverZip(e.target.value)}
+                    maxLength={5}
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-receiver-pincode"
                   />
                 </div>
               </div>
             </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
           </div>
         )}
 
         {currentStep === 3 && (
           <div className="space-y-4 animate-fade-in">
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['Document', 'Package'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setProductType(type)}
-                    className={cn(
-                      'p-3 rounded-xl border-2 transition-all text-sm font-medium',
-                      productType === type
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-border'
-                    )}
-                    data-testid={`button-product-${type.toLowerCase()}`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">Service</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['Standard', 'Express'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setServiceType(type)}
-                    className={cn(
-                      'p-3 rounded-xl border-2 transition-all text-left',
-                      serviceType === type
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border'
-                    )}
-                    data-testid={`button-service-${type.toLowerCase()}`}
-                  >
-                    <span className={cn(
-                      'font-semibold text-sm',
-                      serviceType === type ? 'text-primary' : ''
-                    )}>
-                      {type}
-                    </span>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {type === 'Express' ? '~5 days' : '~8 days'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <Label className="text-sm font-semibold">Weight</Label>
@@ -698,6 +786,135 @@ export default function CreateShipment() {
               </div>
             </div>
 
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Shipment Value</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Label className="text-xs text-muted-foreground">Declared Value</Label>
+                  <Input
+                    type="number"
+                    value={shipmentValue}
+                    onChange={(e) => setShipmentValue(e.target.value)}
+                    placeholder="100"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    min="0"
+                    step="0.01"
+                    data-testid="input-shipment-value"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Currency</Label>
+                  <div className="h-11 mt-1 flex items-center justify-center bg-muted/50 border border-border rounded-xl text-sm font-medium text-muted-foreground">
+                    USD
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5">Customs declared value for international shipping</p>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Shipment Content</Label>
+              <Input
+                value={shipmentContent}
+                onChange={(e) => setShipmentContent(e.target.value)}
+                placeholder="e.g. BOOKS, CLOTHES, ELECTRONICS"
+                className="h-11 text-sm bg-muted/30 border-border rounded-xl"
+                data-testid="input-shipment-content"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1.5">Describe what you're shipping for customs</p>
+            </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStep === 4 && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
+              Required for Indian customs clearance. These details appear on the commercial invoice.
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Service Details</Label>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Product Code</span>
+                  {/* TODO: product_code hardcoded — update when ITD provides final mapping */}
+                  <span className="font-medium text-foreground">SPX</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Service</span>
+                  {/* TODO: api_service_code hardcoded — update when ITD provides final mapping */}
+                  <span className="font-medium text-foreground text-right text-xs">BOMBINO PREMIUM DDP</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">HS Code</span>
+                  {/* TODO: hscode hardcoded — update when HS code lookup is implemented */}
+                  <span className="font-medium text-foreground">456789</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+              <Label className="text-sm font-semibold">Invoice Item</Label>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                {/* TODO: description hardcoded — update when item descriptions are configurable */}
+                <div className="h-11 mt-1 px-3 flex items-center bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
+                  GIFTS
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Quantity</Label>
+                  <Input
+                    type="number"
+                    value={invoiceQty}
+                    onChange={(e) => setInvoiceQty(e.target.value)}
+                    min="1"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-invoice-qty"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Unit Weight (kg)</Label>
+                  <Input
+                    type="number"
+                    value={invoiceUnitWeight}
+                    onChange={(e) => setInvoiceUnitWeight(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-invoice-unit-weight"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Unit Rate (USD)</Label>
+                <Input
+                  type="number"
+                  value={invoiceUnitRate}
+                  onChange={(e) => setInvoiceUnitRate(e.target.value)}
+                  placeholder="100"
+                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  data-testid="input-invoice-unit-rate"
+                />
+              </div>
+              {invoiceQty && invoiceUnitRate && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-semibold">
+                    ${(parseFloat(invoiceQty || '0') * parseFloat(invoiceUnitRate || '0')).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {submitError && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
                 <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -710,7 +927,7 @@ export default function CreateShipment() {
 
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-border p-4 safe-bottom">
         <div className="max-w-md mx-auto">
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <Button
               onClick={handleNext}
               className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
