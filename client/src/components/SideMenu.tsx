@@ -1,8 +1,9 @@
-import { X, User, LogOut, LogIn, HelpCircle, MessageCircle, Phone } from 'lucide-react';
+import { X, User, LogOut, LogIn, HelpCircle, Phone } from 'lucide-react';
 import { Link } from 'wouter';
 import { useAppStore } from '@/lib/store';
 import { apiRequest } from '@/lib/queryClient';
-import bombinoLogo from '@assets/image_1768167970562.png';
+import bombinoLogo from '@/assets/image_1768167970562.png';
+import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 
 interface SideMenuProps {
   isOpen: boolean;
@@ -105,7 +106,7 @@ export function SideMenu({ isOpen, onClose }: SideMenuProps) {
               data-testid="link-whatsapp"
             >
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-green-600" />
+                <img src={whatsAppLogo} alt="WhatsApp" className="w-5 h-5 object-contain" />
               </div>
               <span className="font-medium">WhatsApp Support</span>
             </a>

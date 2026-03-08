@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { ArrowLeft, Mail, Lock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore, type AuthUser } from '@/lib/store';
 import { apiRequest } from '@/lib/queryClient';
-import bombinoLogo from '@assets/generated_images/bombino_express_logo_design.png';
+import bombinoLogo from '@/assets/image_1768167970562.png';
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login } = useAppStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,9 +58,10 @@ export default function Login() {
       </header>
 
       <main className="px-6 py-8">
-        <div className="flex flex-col items-center mb-8">
-          <img src={bombinoLogo} alt="Bombino Express" className="h-16 w-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Bringing the world closer</p>
+        <div className="flex flex-col items-center mb-12">
+          <img src={bombinoLogo} alt="Bombino Express" className="h-24 w-auto mb-6 max-w-[200px] object-contain" />
+          <h2 className="text-xl font-semibold text-foreground">Sign In</h2>
+          <p className="text-sm text-muted-foreground mt-1">Bringing the world closer</p>
         </div>
 
         <div className="space-y-6 animate-fade-in">
@@ -83,17 +85,25 @@ export default function Login() {
           <div>
             <Label className="text-sm font-medium">Password</Label>
             <div className="relative mt-2">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
               <Input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 placeholder="Enter your password"
-                className="pl-10 h-14"
+                className="pl-10 pr-12 h-14"
                 autoComplete="current-password"
                 data-testid="input-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

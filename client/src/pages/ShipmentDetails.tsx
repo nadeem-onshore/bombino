@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { ArrowLeft, Copy, Check, Plane, Download, MessageCircle, Phone, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Plane, Download, Phone, AlertTriangle, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { StatusBadge } from '@/components/StatusBadge';
 import { TrackingTimeline } from '@/components/TrackingTimeline';
 import type { TrackingEvent } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 
 interface DocketEvent {
   id: string;
@@ -212,7 +213,7 @@ export default function ShipmentDetails() {
                   className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-red-700"
                   data-testid="link-support-hold"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" />
+                  <img src={whatsAppLogo} alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
                   Contact Support
                 </a>
               </div>
@@ -262,7 +263,7 @@ export default function ShipmentDetails() {
             className="w-11 h-11 bg-green-50 border border-green-200 rounded-xl flex items-center justify-center hover:bg-green-100 transition-colors"
             data-testid="button-whatsapp"
           >
-            <MessageCircle className="w-5 h-5 text-green-600" />
+            <img src={whatsAppLogo} alt="WhatsApp" className="w-5 h-5 object-contain" />
           </a>
           <a
             href="tel:+10000000000"

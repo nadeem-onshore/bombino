@@ -1,8 +1,9 @@
-import { ArrowLeft, User, Mail, Phone, LogOut, MessageCircle, Phone as PhoneIcon, Send } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, LogOut, Phone as PhoneIcon, Send } from 'lucide-react';
 import { useLocation, Link } from 'wouter';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import bombinoLogo from '@assets/generated_images/bombino_express_logo_design.png';
+import bombinoLogo from '@/assets/image_1768167970562.png';
+import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 import { BottomNav } from '@/components/BottomNav';
 
 export default function Profile() {
@@ -106,7 +107,7 @@ export default function Profile() {
             data-testid="link-profile-whatsapp"
           >
             <div className="w-9 h-9 bg-green-50 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-green-600" />
+              <img src={whatsAppLogo} alt="WhatsApp" className="w-4 h-4 object-contain" />
             </div>
             <div className="flex-1">
               <p className="font-medium text-sm">WhatsApp Support</p>

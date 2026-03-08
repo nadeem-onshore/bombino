@@ -134,6 +134,40 @@ body {
   }
 }
 
+/* BIA chat: message entrance */
+@keyframes bia-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-bia-message-in {
+  animation: bia-message-in 250ms ease-out forwards;
+}
+
+/* BIA chat: typing indicator dots */
+@keyframes bia-typing-dot {
+  0%, 60%, 100% {
+    opacity: 0.35;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.bia-typing-dot {
+  animation: bia-typing-dot 1s ease-in-out infinite;
+}
+
+.bia-typing-dot:nth-child(1) { animation-delay: 0ms; }
+.bia-typing-dot:nth-child(2) { animation-delay: 200ms; }
+.bia-typing-dot:nth-child(3) { animation-delay: 400ms; }
+
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.4);
@@ -229,7 +263,7 @@ body {
   }
 }
 
-/* FAB wrapper: position + float animation */
+/* FAB wrapper: position + float animation. touch-action: none so drag is not consumed as scroll. */
 .fab-wrapper {
   position: fixed;
   left: 50%;
@@ -238,6 +272,21 @@ body {
   height: 4rem;
   overflow: visible;
   animation: fab-float 4s ease-in-out infinite;
+  touch-action: none;
+}
+
+/* Dragged mode: fully independent viewport positioning. No centering, no bottom anchor. */
+.fab-wrapper-dragged {
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  animation: none;
+}
+
+/* Subtle scale feedback while dragging */
+.fab-button.fab-dragging {
+  transform: scale(1.03);
 }
 
 /* FAB aura: blurred sparkle halo behind button */
@@ -352,6 +401,42 @@ body {
   align-items: center;
   justify-content: center;
   animation: fab-icon-rotate 5s ease-in-out infinite;
+}
+
+/* Premium metric number: subtle light sweep across text (visible, elegant) */
+@keyframes metric-text-shimmer {
+  0% {
+    background-position: 150% 50%;
+  }
+  18% {
+    background-position: -50% 50%;
+  }
+  28% {
+    background-position: -50% 50%;
+  }
+  100% {
+    background-position: 150% 50%;
+  }
+}
+
+/* Hero metric: full foreground so number reads dominant; light band for subtle shimmer */
+.metric-number-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--foreground)) 0%,
+    rgb(var(--foreground)) 28%,
+    rgb(100 116 139) 42%,
+    rgb(148 163 184) 50%,
+    rgb(100 116 139) 58%,
+    rgb(var(--foreground)) 72%,
+    rgb(var(--foreground)) 100%
+  );
+  background-size: 280% 100%;
+  background-position: 150% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: metric-text-shimmer 7s ease-in-out infinite;
 }
 
 .card-elevated {
