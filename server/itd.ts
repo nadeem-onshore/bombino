@@ -292,16 +292,14 @@ class ITDClient {
   }
 
   // POST /docket_api/customer_rate_cals (multipart/form-data, different domain)
-  async getRates(params: RateParams): Promise<unknown> {
+  async getRates(params: RateParams, userEmail?: string): Promise<unknown> {
     const username = Buffer.from(
-      process.env.ITD_EMAIL ?? ""
+      userEmail ?? process.env.ITD_EMAIL ?? ""
     ).toString("base64");
     const password = Buffer.from(
       process.env.ITD_PASSWORD ?? ""
     ).toString("base64");
-    const cookie = process.env.ITD_COOKIE ?? "";
     const apiCompanyId = process.env.ITD_API_COMPANY_ID ?? "2";
-    const customerCode = process.env.ITD_CUSTOMER_CODE ?? "";
 
     const form = new FormData();
     form.append("product_code", params.product_code);
@@ -310,7 +308,7 @@ class ITDClient {
     form.append("origin_code", params.origin_code);
     form.append("pcs", params.pcs);
     form.append("actual_weight", params.actual_weight);
-    form.append("customer_code", customerCode);
+    form.append("customer_code", "72497");
     form.append("username", username);
     form.append("password", password);
 
@@ -318,7 +316,6 @@ class ITDClient {
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { Cookie: cookie },
       body: form,
     });
 

@@ -89,10 +89,10 @@ export async function registerRoutes(
         product_code,
         destination_code,
         booking_date: booking_date ?? new Date().toISOString().split("T")[0],
-        origin_code: origin_code ?? "US",
+        origin_code: origin_code ?? "IN",
         pcs: pcs ?? "1",
         actual_weight,
-      });
+      }, req.session.user?.email);
       res.json(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Rate calculation failed";

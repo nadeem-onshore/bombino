@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Truck, Zap, ArrowRight, Package, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Zap, ArrowRight, Package, Loader2, AlertTriangle } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { Header } from '@/components/Header';
@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { lbToKg, kgToLb, inToCm } from '@/lib/mockData';
 import { apiRequest } from '@/lib/queryClient';
-import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface RateParams {
@@ -22,25 +21,17 @@ interface RateParams {
   actual_weight: string;
 }
 
-interface ITDRateResponse {
-  success?: boolean;
-  data?: {
-    total_amount?: string | number;
-    base_rate?: string | number;
-    fuel_surcharge?: string | number;
-    handling_charges?: string | number;
-    tax?: string | number;
-  };
-  total_amount?: string | number;
-  base_rate?: string | number;
+interface ITDServiceOption {
+  internal_api_service_code: string;
+  total: number;
 }
 
-interface RateResult {
-  total: number;
-  base: number;
-  fuel: number;
-  handling: number;
-  tax: number;
+interface ITDRateResponse {
+  success?: boolean;
+  data?: ITDServiceOption[];
+}
+
+interface ShipmentMeta {
   weightLb: number;
   weightKg: number;
   dimLIn?: number;
@@ -48,51 +39,12 @@ interface RateResult {
   dimHIn?: number;
   pieces: number;
   productType: string;
-  etaDate: Date;
-}
-
-function parseAmount(val: string | number | undefined): number {
-  if (val === undefined || val === null) return 0;
-  return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
-}
-
-function extractRateResult(raw: ITDRateResponse, weightLb: number, weightKg: number, pieces: number, productType: string, dimLIn?: number, dimWIn?: number, dimHIn?: number): RateResult {
-  const data = raw.data ?? raw;
-  const total = parseAmount((data as ITDRateResponse).total_amount ?? (raw as ITDRateResponse).total_amount);
-  const base = parseAmount((data as ITDRateResponse).base_rate ?? (raw as ITDRateResponse).base_rate);
-  const fuel = parseAmount((data as { fuel_surcharge?: string | number }).fuel_surcharge);
-  const handling = parseAmount((data as { handling_charges?: string | number }).handling_charges);
-  const tax = parseAmount((data as { tax?: string | number }).tax);
-
-  // If we got a total but no breakdown, estimate proportions
-  const effectiveTotal = total || (base + fuel + handling + tax);
-  const effectiveBase = base || Math.floor(effectiveTotal * 0.7);
-  const effectiveFuel = fuel || Math.floor(effectiveTotal * 0.15);
-  const effectiveHandling = handling || Math.floor(effectiveTotal * 0.1);
-  const effectiveTax = tax || Math.floor(effectiveTotal * 0.05);
-
-  return {
-    total: effectiveTotal || effectiveBase + effectiveFuel + effectiveHandling + effectiveTax,
-    base: effectiveBase,
-    fuel: effectiveFuel,
-    handling: effectiveHandling,
-    tax: effectiveTax,
-    weightLb,
-    weightKg,
-    dimLIn,
-    dimWIn,
-    dimHIn,
-    pieces,
-    productType,
-    etaDate: addDays(new Date(), 7),
-  };
 }
 
 export default function Rates() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<1 | 2>(1);
-  const [expandedRate, setExpandedRate] = useState<string | null>(null);
 
   const [productType, setProductType] = useState<'Document' | 'Package'>('Package');
   const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
@@ -105,7 +57,8 @@ export default function Rates() {
   const [originZip, setOriginZip] = useState('');
   const [destPincode, setDestPincode] = useState('');
 
-  const [rateResult, setRateResult] = useState<RateResult | null>(null);
+  const [rateResults, setRateResults] = useState<ITDServiceOption[] | null>(null);
+  const [shipmentMeta, setShipmentMeta] = useState<ShipmentMeta | null>(null);
   const [apiError, setApiError] = useState('');
 
   const rateMutation = useMutation({
@@ -131,14 +84,26 @@ export default function Rates() {
         }
       }
 
-      setRateResult(extractRateResult(
-        data,
-        parseFloat(weightLb.toFixed(1)),
-        parseFloat(weightKg.toFixed(2)),
-        parseInt(pieces) || 1,
-        productType,
-        dimLIn, dimWIn, dimHIn,
-      ));
+      const services: ITDServiceOption[] = Array.isArray(data)
+        ? (data as ITDServiceOption[])
+        : Array.isArray(data?.data)
+        ? data.data
+        : [];
+
+      if (services.length === 0) {
+        setApiError('No rates available for this shipment.');
+      } else {
+        setShipmentMeta({
+          weightLb: parseFloat(weightLb.toFixed(1)),
+          weightKg: parseFloat(weightKg.toFixed(2)),
+          dimLIn,
+          dimWIn,
+          dimHIn,
+          pieces: parseInt(pieces) || 1,
+          productType,
+        });
+        setRateResults(services);
+      }
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message.replace(/^\d+:\s*/, '') : 'Rate calculation failed';
@@ -158,18 +123,19 @@ export default function Rates() {
     const weightLb = weightUnit === 'lb' ? w : kgToLb(w);
 
     rateMutation.mutate({
-      product_code: productType === 'Document' ? 'DOC' : 'PKG',
-      destination_code: 'IN',
+      product_code: 'SPX',
+      destination_code: 'US',
       booking_date: new Date().toISOString().split('T')[0],
-      origin_code: 'US',
+      origin_code: 'IN',
       pcs: String(parseInt(pieces) || 1),
       actual_weight: String(weightLb.toFixed(2)),
     });
   };
 
   const handleBack = () => {
-    if (rateResult) {
-      setRateResult(null);
+    if (rateResults) {
+      setRateResults(null);
+      setShipmentMeta(null);
     } else if (step === 2) {
       setStep(1);
     } else {
@@ -177,7 +143,7 @@ export default function Rates() {
     }
   };
 
-  if (rateResult) {
+  if (rateResults && shipmentMeta) {
     return (
       <div className="min-h-screen bg-background pb-20" data-testid="screen-rates-results">
         <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
@@ -200,22 +166,22 @@ export default function Rates() {
                 <Package className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-semibold text-sm">{rateResult.productType} · {rateResult.pieces} pc</p>
-                <p className="text-xs text-muted-foreground">USA → India</p>
+                <p className="font-semibold text-sm">{shipmentMeta.productType} · {shipmentMeta.pieces} pc</p>
+                <p className="text-xs text-muted-foreground">India → USA</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-[10px] text-muted-foreground mb-0.5">Weight</p>
-                <p className="font-semibold">{rateResult.weightLb} lb</p>
-                <p className="text-[10px] text-muted-foreground">{rateResult.weightKg} kg</p>
+                <p className="font-semibold">{shipmentMeta.weightLb} lb</p>
+                <p className="text-[10px] text-muted-foreground">{shipmentMeta.weightKg} kg</p>
               </div>
-              {rateResult.dimLIn && rateResult.dimWIn && rateResult.dimHIn && (
+              {shipmentMeta.dimLIn && shipmentMeta.dimWIn && shipmentMeta.dimHIn && (
                 <div className="bg-muted/50 rounded-lg p-3">
                   <p className="text-[10px] text-muted-foreground mb-0.5">Dimensions</p>
-                  <p className="font-semibold">{rateResult.dimLIn.toFixed(0)}×{rateResult.dimWIn.toFixed(0)}×{rateResult.dimHIn.toFixed(0)} in</p>
+                  <p className="font-semibold">{shipmentMeta.dimLIn.toFixed(0)}×{shipmentMeta.dimWIn.toFixed(0)}×{shipmentMeta.dimHIn.toFixed(0)} in</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {inToCm(rateResult.dimLIn).toFixed(0)}×{inToCm(rateResult.dimWIn).toFixed(0)}×{inToCm(rateResult.dimHIn).toFixed(0)} cm
+                    {inToCm(shipmentMeta.dimLIn).toFixed(0)}×{inToCm(shipmentMeta.dimWIn).toFixed(0)}×{inToCm(shipmentMeta.dimHIn).toFixed(0)} cm
                   </p>
                 </div>
               )}
@@ -223,82 +189,29 @@ export default function Rates() {
           </div>
 
           <div className="space-y-3">
-            <div
-              className={cn(
-                'bg-card rounded-xl border transition-all shadow-sm',
-                expandedRate === 'rate' ? 'border-primary' : 'border-border'
-              )}
-            >
-              <button
-                onClick={() => setExpandedRate(expandedRate === 'rate' ? null : 'rate')}
-                className="w-full p-4 text-left"
-                data-testid="rate-card-express"
+            {rateResults.map((service, idx) => (
+              <div
+                key={idx}
+                className="bg-card rounded-xl border border-border p-4 shadow-sm"
+                data-testid={`rate-card-${idx}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Zap className="w-5 h-5 text-primary" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Express</h3>
-                      <p className="text-xs text-muted-foreground">
-                        By {format(rateResult.etaDate, 'MMM d')}
-                      </p>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground text-sm leading-tight">
+                        {service.internal_api_service_code}
+                      </h3>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-primary">
-                      {rateResult.total > 0 ? `$${rateResult.total}` : 'Contact us'}
-                    </span>
-                    {expandedRate === 'rate' ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-              </button>
-
-              {expandedRate === 'rate' && rateResult.total > 0 && (
-                <div className="px-4 pb-4 border-t border-border pt-3 animate-slide-up">
-                  <p className="font-medium text-xs mb-2 text-muted-foreground">Cost Breakdown</p>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Base Rate</span>
-                      <span>${rateResult.base}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fuel Surcharge</span>
-                      <span>${rateResult.fuel}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Handling</span>
-                      <span>${rateResult.handling}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tax</span>
-                      <span>${rateResult.tax}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold pt-2 border-t border-border">
-                      <span>Total</span>
-                      <span>${rateResult.total}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">Standard</h3>
-                  <p className="text-xs text-muted-foreground">Contact us for standard rates</p>
+                  <span className="text-xl font-bold text-primary ml-3 flex-shrink-0">
+                    ₹{service.total.toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
 
           <p className="text-[10px] text-muted-foreground text-center mt-5">
@@ -318,7 +231,7 @@ export default function Rates() {
 
       <main className="px-4 py-5 max-w-md mx-auto">
         <h1 className="text-lg font-semibold text-foreground mb-1">Get Rates</h1>
-        <p className="text-sm text-muted-foreground mb-5">USA → India shipping</p>
+        <p className="text-sm text-muted-foreground mb-5">India → USA shipping</p>
 
         <div className="flex items-center gap-2 mb-5">
           <div className={cn(

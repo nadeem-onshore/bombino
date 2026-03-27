@@ -360,4 +360,206 @@ curl --location 'https://app.bombinoexp.com/docket_api/customer_rate_cals?api_co
 --form 'username="dWF0QGJvbWJpbm9leHAuY29t"' \
 --form 'password="V2VsY29tZUAyMDI2"'
 
+Reponse for Rate API :
+{
+	"success": true,
+	"data": [
+		{
+			"code": "BOMBINO PREMIUM WC DDP",
+			"internal_api_service_code": "BOMBINO PREMIUM WC DDP",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 7368,
+			"fsc": 0,
+			"igst": "",
+			"cgst": 663.12,
+			"sgst": 663.12,
+			"total": 8694.24,
+			"per_kg": 724.52,
+			"id": "118",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 7368,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "UPS EXP SAVER",
+			"internal_api_service_code": "UPS EXP SAVER",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 5771,
+			"fsc": 1803.44,
+			"igst": "",
+			"cgst": 681.7,
+			"sgst": 681.7,
+			"total": 8937.84,
+			"per_kg": 744.82,
+			"id": "12",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 7574.4400000000005,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "BOMBINO PREMIUM WC DDP",
+			"internal_api_service_code": "BOMBINO PREMIUM WC DDP",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 7576.32,
+			"fsc": 0,
+			"igst": "",
+			"cgst": 681.87,
+			"sgst": 681.87,
+			"total": 8940.06,
+			"per_kg": 745,
+			"id": "118",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 7576.32,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "DHL EXP",
+			"internal_api_service_code": "DHL EXP",
+			"weight": "12",
+			"other_charges": 360,
+			"rate": 5865,
+			"fsc": 1686.19,
+			"igst": "",
+			"cgst": 712.01,
+			"sgst": 712.01,
+			"total": 9335.2,
+			"per_kg": 777.93,
+			"id": "10",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 7911.1900000000005,
+			"chrage_apply_data": {
+				"59": {
+					"name": "GO GREEN",
+					"amount": 360,
+					"rate_id": "376"
+				}
+			}
+		},
+		{
+			"code": "BOMBINO SELF SERVICE WC DDP",
+			"internal_api_service_code": "BOMBINO SELF SERVICE WC DDP",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 8100,
+			"fsc": 0,
+			"igst": "",
+			"cgst": 729,
+			"sgst": 729,
+			"total": 9558,
+			"per_kg": 796.5,
+			"id": "119",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 8100,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "BOMBINO SELF SERVICE WC DDP",
+			"internal_api_service_code": "BOMBINO SELF SERVICE WC DDP",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 8100,
+			"fsc": 0,
+			"igst": "",
+			"cgst": 729,
+			"sgst": 729,
+			"total": 9558,
+			"per_kg": 796.5,
+			"id": "119",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 8100,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "FEDEX IP",
+			"internal_api_service_code": "FEDEX IP",
+			"weight": "12",
+			"other_charges": 0,
+			"rate": 6671,
+			"fsc": 2134.72,
+			"igst": "",
+			"cgst": 792.51,
+			"sgst": 792.51,
+			"total": 10390.75,
+			"per_kg": 865.9,
+			"id": "11",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 8805.72,
+			"chrage_apply_data": []
+		},
+		{
+			"code": "DHL EXP",
+			"internal_api_service_code": "DHL EXP",
+			"weight": "12",
+			"other_charges": 2960,
+			"rate": 5865,
+			"fsc": 1686.19,
+			"igst": "",
+			"cgst": 946.01,
+			"sgst": 946.01,
+			"total": 12403.2,
+			"per_kg": 1033.6,
+			"id": "10",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 10511.19,
+			"chrage_apply_data": {
+				"55": {
+					"name": "COMMERCIAL CHARGES",
+					"amount": 2600,
+					"rate_id": "337"
+				},
+				"59": {
+					"name": "GO GREEN",
+					"amount": 360,
+					"rate_id": "376"
+				}
+			}
+		},
+		{
+			"code": "FEDEX IP",
+			"internal_api_service_code": "FEDEX IP",
+			"weight": "12",
+			"other_charges": 2600,
+			"rate": 6671,
+			"fsc": 2134.72,
+			"igst": "",
+			"cgst": 1026.51,
+			"sgst": 1026.51,
+			"total": 13458.75,
+			"per_kg": 1121.56,
+			"id": "11",
+			"note": "",
+			"vendor_logo_file": "",
+			"gst_per": "18.00",
+			"sub_total": 11405.72,
+			"chrage_apply_data": {
+				"55": {
+					"name": "COMMERCIAL CHARGES",
+					"amount": 2600,
+					"rate_id": "337"
+				}
+			}
+		}
+	],
+	"error": []
+}
+
 
