@@ -7,7 +7,7 @@ const navItems = [
   { icon: Home, label: 'Home', path: '/home' },
   { icon: BadgeDollarSign, label: 'Rates', path: '/rates' },
   { icon: Send, label: 'Ship', path: '/create' },
-  { icon: PackageSearch, label: 'Receive', path: '/receive' },
+  { icon: PackageSearch, label: 'Orders', path: '/receive' },
 ];
 
 export function BottomNav() {

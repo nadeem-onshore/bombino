@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight, Loader2, AlertTriangle, FileText } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
+import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight, Loader2, AlertTriangle, FileText, Copy } from 'lucide-react';
+import { useLocation, useSearch } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { BottomNav } from '@/components/BottomNav';
+import { CorridorRouteInfo } from '@/components/CorridorRouteInfo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +12,7 @@ import { useAppStore } from '@/lib/store';
 import { Shipment, TrackingEvent, lbToKg, inToCm } from '@/lib/mockData';
 import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface FreeFormLineItem {
   total: string;
@@ -81,7 +84,17 @@ const steps = [
   { id: 4, title: 'Invoice', icon: FileText },
 ];
 
+const DEFAULT_API_SERVICE_CODE = 'BOMBINO PREMIUM DDP SERVICE';
+
+function apiServiceCodeFromSearch(search: string): string {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const fromQuery = params.get('api_service_code');
+  return fromQuery && fromQuery.trim() ? fromQuery : DEFAULT_API_SERVICE_CODE;
+}
+
 export default function CreateShipment() {
+  const search = useSearch();
+  const [apiServiceCode] = useState(() => apiServiceCodeFromSearch(search));
   const [, setLocation] = useLocation();
   const { isLoggedIn, user, addShipment, addNotification } = useAppStore();
   const [currentStep, setCurrentStep] = useState(1);
@@ -121,6 +134,41 @@ export default function CreateShipment() {
   const [invoiceUnitRate, setInvoiceUnitRate] = useState('');
 
   const [stepError, setStepError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const fieldBorderClass = (key: string) =>
+    cn(
+      'h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl',
+      fieldErrors[key] && 'border-2 border-primary'
+    );
+
+  const fieldBorderClassNoMt = (key: string) =>
+    cn(
+      'h-11 text-sm bg-muted/30 border-border rounded-xl',
+      fieldErrors[key] && 'border-2 border-primary'
+    );
+
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!newAWB) return;
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { x: 0.5, y: 0.5 },
+      startVelocity: 40,
+      colors: ['#D32F2F', '#ffffff'],
+    });
+  }, [newAWB]);
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateShipmentPayload) =>
@@ -255,35 +303,75 @@ export default function CreateShipment() {
   }
 
   if (newAWB) {
+    const bookingDateLabel = new Date().toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const corridorLabel = `${senderCity}, ${senderState} → ${receiverCity}, ${receiverState}`;
+
+    const copyAwb = (): void => {
+      void navigator.clipboard.writeText(newAWB).then(() => {
+        toast({ title: 'Copied', description: 'AWB copied to clipboard' });
+      });
+    };
+
     return (
       <div className="min-h-screen bg-background pb-20" data-testid="screen-create-success">
-        <main className="px-4 py-16 max-w-md mx-auto text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-scale-in">
-            <Check className="w-8 h-8 text-green-600" />
+        <main className="px-4 py-12 max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5 animate-scale-in">
+            <Check className="w-10 h-10 text-[#D32F2F]" strokeWidth={2.5} />
           </div>
-          <h2 className="text-lg font-semibold text-foreground mb-2">Booking Confirmed!</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Your shipment has been created
+          <h2 className="text-2xl font-bold text-foreground mb-2">Shipment Booked!</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Your shipment has been successfully created.
           </p>
-          <div className="bg-card rounded-xl border border-border p-4 mb-6 inline-block shadow-sm">
-            <p className="text-xs text-muted-foreground">AWB Number</p>
-            <p className="text-xl font-bold text-primary mt-1">{newAWB}</p>
+
+          <div className="bg-card rounded-xl border border-border p-4 mb-6 text-left shadow-sm w-full">
+            <button
+              type="button"
+              onClick={copyAwb}
+              className="w-full text-left rounded-lg p-2 -m-2 hover:bg-muted/50 transition-colors active:scale-[0.99]"
+              data-testid="button-copy-awb"
+            >
+              <p className="text-xs text-muted-foreground mb-1">AWB Number · tap to copy</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-lg font-bold text-foreground break-all">{newAWB}</p>
+                <Copy className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden />
+              </div>
+            </button>
+
+            <div className="mt-4 pt-4 border-t border-border space-y-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground shrink-0">Service</span>
+                <span className="font-medium text-foreground text-right text-xs break-words">{apiServiceCode}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground shrink-0">Booking date</span>
+                <span className="font-medium text-foreground text-right">{bookingDateLabel}</span>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">From → To</p>
+                <p className="font-medium text-foreground text-sm leading-snug">{corridorLabel}</p>
+              </div>
+            </div>
           </div>
+
           <div className="space-y-2">
             <Button
-              onClick={() => setLocation(`/shipment/${newAWB}`)}
-              className="w-full h-12 bg-primary text-sm rounded-xl shadow-md"
-              data-testid="button-view-shipment"
+              onClick={() => setLocation(`/shipment/${encodeURIComponent(newAWB)}`)}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm rounded-xl shadow-md"
+              data-testid="button-track-shipment"
             >
-              View Shipment
+              Track Shipment
             </Button>
             <Button
               variant="outline"
-              onClick={() => setLocation('/receive')}
+              onClick={() => setLocation('/home')}
               className="w-full h-12 text-sm rounded-xl border-border"
-              data-testid="button-view-orders"
+              data-testid="button-go-home"
             >
-              Go to My Shipments
+              Go Home
             </Button>
           </div>
         </main>
@@ -295,29 +383,40 @@ export default function CreateShipment() {
 
   const handleNext = () => {
     setStepError('');
+    setFieldErrors({});
     if (currentStep === 1) {
-      if (!senderName.trim() || !senderPhone.trim() || !senderAddress.trim() || !senderCity.trim() || !senderState.trim() || !senderZip.trim()) {
-        setStepError('Please fill in all required sender fields.');
+      const e: Record<string, boolean> = {};
+      if (!senderName.trim()) e.senderName = true;
+      if (!senderPhone.trim()) e.senderPhone = true;
+      if (!senderAddress.trim()) e.senderAddress = true;
+      if (!senderCity.trim()) e.senderCity = true;
+      if (!senderState.trim()) e.senderState = true;
+      if (!senderZip.trim()) e.senderZip = true;
+      if (Object.keys(e).length) {
+        setFieldErrors(e);
         return;
       }
     }
     if (currentStep === 2) {
-      if (!receiverName.trim() || !receiverPhone.trim() || !receiverAddress.trim() || !receiverCity.trim() || !receiverState.trim() || !receiverZip.trim()) {
-        setStepError('Please fill in all required receiver fields.');
+      const e: Record<string, boolean> = {};
+      if (!receiverName.trim()) e.receiverName = true;
+      if (!receiverPhone.trim()) e.receiverPhone = true;
+      if (!receiverAddress.trim()) e.receiverAddress = true;
+      if (!receiverCity.trim()) e.receiverCity = true;
+      if (!receiverState.trim()) e.receiverState = true;
+      if (!receiverZip.trim()) e.receiverZip = true;
+      if (Object.keys(e).length) {
+        setFieldErrors(e);
         return;
       }
     }
     if (currentStep === 3) {
-      if (!weight || parseFloat(weight) <= 0) {
-        setStepError('Please enter a valid weight.');
-        return;
-      }
-      if (!shipmentValue || parseFloat(shipmentValue) <= 0) {
-        setStepError('Please enter a shipment value.');
-        return;
-      }
-      if (!shipmentContent.trim()) {
-        setStepError('Please describe the shipment content.');
+      const e: Record<string, boolean> = {};
+      if (!weight || parseFloat(weight) <= 0) e.weight = true;
+      if (!shipmentValue || parseFloat(shipmentValue) <= 0) e.shipmentValue = true;
+      if (!shipmentContent.trim()) e.shipmentContent = true;
+      if (Object.keys(e).length) {
+        setFieldErrors(e);
         return;
       }
     }
@@ -325,6 +424,8 @@ export default function CreateShipment() {
   };
 
   const handleBack = () => {
+    setFieldErrors({});
+    setStepError('');
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     } else {
@@ -339,6 +440,18 @@ export default function CreateShipment() {
 
   const handleSubmit = () => {
     setSubmitError('');
+    setFieldErrors({});
+    const invE: Record<string, boolean> = {};
+    const qtyNum = parseInt(invoiceQty, 10);
+    if (!invoiceQty.trim() || Number.isNaN(qtyNum) || qtyNum < 1) invE.invoiceQty = true;
+    const uw = parseFloat(invoiceUnitWeight || '');
+    if (!invoiceUnitWeight.trim() || Number.isNaN(uw) || uw <= 0) invE.invoiceUnitWeight = true;
+    const ur = parseFloat(invoiceUnitRate || '');
+    if (!invoiceUnitRate.trim() || Number.isNaN(ur) || ur <= 0) invE.invoiceUnitRate = true;
+    if (Object.keys(invE).length) {
+      setFieldErrors(invE);
+      return;
+    }
     const weightLb = getWeightLb();
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -371,8 +484,7 @@ export default function CreateShipment() {
       free_form_currency: 'USD',
       terms_of_trade: 'FOB',
       entry_type: 2,
-      // TODO: api_service_code hardcoded — update when ITD provides final mapping
-      api_service_code: 'BOMBINO PREMIUM DDP SERVICE',
+      api_service_code: apiServiceCode,
       shipper_name: senderName,
       shipper_company_name: senderCompany || senderName,
       shipper_contact_no: senderPhone,
@@ -421,7 +533,7 @@ export default function CreateShipment() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28" data-testid="screen-create">
+    <div className="min-h-screen bg-background pb-20" data-testid="screen-create">
       <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
@@ -477,20 +589,24 @@ export default function CreateShipment() {
       <main className="px-4 py-5 max-w-md mx-auto">
         {currentStep === 1 && (
           <div className="space-y-4 animate-fade-in">
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-              Origin: India (fixed)
-            </div>
+            <CorridorRouteInfo />
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
               <div>
                 <Label className="text-xs text-muted-foreground">Full Name <span className="text-red-400">*</span></Label>
                 <Input
                   value={senderName}
-                  onChange={(e) => setSenderName(e.target.value)}
+                  onChange={(e) => {
+                    setSenderName(e.target.value);
+                    clearFieldError('senderName');
+                  }}
                   placeholder="John Doe"
-                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  className={fieldBorderClass('senderName')}
                   data-testid="input-sender-name"
                 />
+                {fieldErrors.senderName && (
+                  <p className="text-xs text-red-600 mt-1">This field is required</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
@@ -517,51 +633,81 @@ export default function CreateShipment() {
                   <Label className="text-xs text-muted-foreground">Phone</Label>
                   <Input
                     value={senderPhone}
-                    onChange={(e) => setSenderPhone(e.target.value)}
+                    onChange={(e) => {
+                      setSenderPhone(e.target.value);
+                      clearFieldError('senderPhone');
+                    }}
                     placeholder="+91"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('senderPhone')}
                     data-testid="input-sender-phone"
                   />
+                  {fieldErrors.senderPhone && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Address</Label>
                 <Input
                   value={senderAddress}
-                  onChange={(e) => setSenderAddress(e.target.value)}
+                  onChange={(e) => {
+                    setSenderAddress(e.target.value);
+                    clearFieldError('senderAddress');
+                  }}
                   placeholder="Street address"
-                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  className={fieldBorderClass('senderAddress')}
                   data-testid="input-sender-address"
                 />
+                {fieldErrors.senderAddress && (
+                  <p className="text-xs text-red-600 mt-1">This field is required</p>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground">City</Label>
                   <Input
                     value={senderCity}
-                    onChange={(e) => setSenderCity(e.target.value)}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    onChange={(e) => {
+                      setSenderCity(e.target.value);
+                      clearFieldError('senderCity');
+                    }}
+                    className={fieldBorderClass('senderCity')}
                     data-testid="input-sender-city"
                   />
+                  {fieldErrors.senderCity && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">State</Label>
                   <Input
                     value={senderState}
-                    onChange={(e) => setSenderState(e.target.value)}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    onChange={(e) => {
+                      setSenderState(e.target.value);
+                      clearFieldError('senderState');
+                    }}
+                    className={fieldBorderClass('senderState')}
                     data-testid="input-sender-state"
                   />
+                  {fieldErrors.senderState && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Pincode</Label>
                   <Input
                     value={senderZip}
-                    onChange={(e) => setSenderZip(e.target.value)}
+                    onChange={(e) => {
+                      setSenderZip(e.target.value);
+                      clearFieldError('senderZip');
+                    }}
                     maxLength={6}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('senderZip')}
                     data-testid="input-sender-zip"
                   />
+                  {fieldErrors.senderZip && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -589,24 +735,37 @@ export default function CreateShipment() {
                 <p className="text-xs text-red-600">{stepError}</p>
               </div>
             )}
+
+            <Button
+              onClick={handleNext}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
+              data-testid="button-next-step"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         )}
 
         {currentStep === 2 && (
           <div className="space-y-4 animate-fade-in">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-              Destination: USA (fixed)
-            </div>
+            <CorridorRouteInfo />
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
               <div>
                 <Label className="text-xs text-muted-foreground">Receiver Name</Label>
                 <Input
                   value={receiverName}
-                  onChange={(e) => setReceiverName(e.target.value)}
-                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  onChange={(e) => {
+                    setReceiverName(e.target.value);
+                    clearFieldError('receiverName');
+                  }}
+                  className={fieldBorderClass('receiverName')}
                   data-testid="input-receiver-name"
                 />
+                {fieldErrors.receiverName && (
+                  <p className="text-xs text-red-600 mt-1">This field is required</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
@@ -623,11 +782,17 @@ export default function CreateShipment() {
                   <Label className="text-xs text-muted-foreground">Phone</Label>
                   <Input
                     value={receiverPhone}
-                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    onChange={(e) => {
+                      setReceiverPhone(e.target.value);
+                      clearFieldError('receiverPhone');
+                    }}
                     placeholder="+1"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('receiverPhone')}
                     data-testid="input-receiver-phone"
                   />
+                  {fieldErrors.receiverPhone && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Email</Label>
@@ -644,39 +809,63 @@ export default function CreateShipment() {
                 <Label className="text-xs text-muted-foreground">Address</Label>
                 <Input
                   value={receiverAddress}
-                  onChange={(e) => setReceiverAddress(e.target.value)}
-                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  onChange={(e) => {
+                    setReceiverAddress(e.target.value);
+                    clearFieldError('receiverAddress');
+                  }}
+                  className={fieldBorderClass('receiverAddress')}
                   data-testid="input-receiver-address"
                 />
+                {fieldErrors.receiverAddress && (
+                  <p className="text-xs text-red-600 mt-1">This field is required</p>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground">City</Label>
                   <Input
                     value={receiverCity}
-                    onChange={(e) => setReceiverCity(e.target.value)}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    onChange={(e) => {
+                      setReceiverCity(e.target.value);
+                      clearFieldError('receiverCity');
+                    }}
+                    className={fieldBorderClass('receiverCity')}
                     data-testid="input-receiver-city"
                   />
+                  {fieldErrors.receiverCity && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">State</Label>
                   <Input
                     value={receiverState}
-                    onChange={(e) => setReceiverState(e.target.value)}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    onChange={(e) => {
+                      setReceiverState(e.target.value);
+                      clearFieldError('receiverState');
+                    }}
+                    className={fieldBorderClass('receiverState')}
                     data-testid="input-receiver-state"
                   />
+                  {fieldErrors.receiverState && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">ZIP Code</Label>
                   <Input
                     value={receiverZip}
-                    onChange={(e) => setReceiverZip(e.target.value)}
+                    onChange={(e) => {
+                      setReceiverZip(e.target.value);
+                      clearFieldError('receiverZip');
+                    }}
                     maxLength={5}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('receiverZip')}
                     data-testid="input-receiver-pincode"
                   />
+                  {fieldErrors.receiverZip && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -687,6 +876,15 @@ export default function CreateShipment() {
                 <p className="text-xs text-red-600">{stepError}</p>
               </div>
             )}
+
+            <Button
+              onClick={handleNext}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
+              data-testid="button-next-step"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         )}
 
@@ -722,12 +920,18 @@ export default function CreateShipment() {
                   <Input
                     type="number"
                     value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    onChange={(e) => {
+                      setWeight(e.target.value);
+                      clearFieldError('weight');
+                    }}
+                    className={fieldBorderClass('weight')}
                     step="0.1"
                     min="0.1"
                     data-testid="input-package-weight"
                   />
+                  {fieldErrors.weight && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Pieces</Label>
@@ -794,13 +998,19 @@ export default function CreateShipment() {
                   <Input
                     type="number"
                     value={shipmentValue}
-                    onChange={(e) => setShipmentValue(e.target.value)}
+                    onChange={(e) => {
+                      setShipmentValue(e.target.value);
+                      clearFieldError('shipmentValue');
+                    }}
                     placeholder="100"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('shipmentValue')}
                     min="0"
                     step="0.01"
                     data-testid="input-shipment-value"
                   />
+                  {fieldErrors.shipmentValue && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Currency</Label>
@@ -816,11 +1026,17 @@ export default function CreateShipment() {
               <Label className="text-sm font-semibold mb-3 block">Shipment Content</Label>
               <Input
                 value={shipmentContent}
-                onChange={(e) => setShipmentContent(e.target.value)}
+                onChange={(e) => {
+                  setShipmentContent(e.target.value);
+                  clearFieldError('shipmentContent');
+                }}
                 placeholder="e.g. BOOKS, CLOTHES, ELECTRONICS"
-                className="h-11 text-sm bg-muted/30 border-border rounded-xl"
+                className={fieldBorderClassNoMt('shipmentContent')}
                 data-testid="input-shipment-content"
               />
+              {fieldErrors.shipmentContent && (
+                <p className="text-xs text-red-600 mt-1">This field is required</p>
+              )}
               <p className="text-[10px] text-muted-foreground mt-1.5">Describe what you're shipping for customs</p>
             </div>
 
@@ -830,6 +1046,15 @@ export default function CreateShipment() {
                 <p className="text-xs text-red-600">{stepError}</p>
               </div>
             )}
+
+            <Button
+              onClick={handleNext}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
+              data-testid="button-next-step"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         )}
 
@@ -847,10 +1072,11 @@ export default function CreateShipment() {
                   {/* TODO: product_code hardcoded — update when ITD provides final mapping */}
                   <span className="font-medium text-foreground">SPX</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Service</span>
-                  {/* TODO: api_service_code hardcoded — update when ITD provides final mapping */}
-                  <span className="font-medium text-foreground text-right text-xs">BOMBINO PREMIUM DDP</span>
+                <div className="flex justify-between text-sm gap-2">
+                  <span className="text-muted-foreground shrink-0">Service</span>
+                  <span className="font-medium text-foreground text-right text-xs break-words">
+                    {apiServiceCode}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">HS Code</span>
@@ -875,23 +1101,35 @@ export default function CreateShipment() {
                   <Input
                     type="number"
                     value={invoiceQty}
-                    onChange={(e) => setInvoiceQty(e.target.value)}
+                    onChange={(e) => {
+                      setInvoiceQty(e.target.value);
+                      clearFieldError('invoiceQty');
+                    }}
                     min="1"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('invoiceQty')}
                     data-testid="input-invoice-qty"
                   />
+                  {fieldErrors.invoiceQty && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Unit Weight (kg)</Label>
                   <Input
                     type="number"
                     value={invoiceUnitWeight}
-                    onChange={(e) => setInvoiceUnitWeight(e.target.value)}
+                    onChange={(e) => {
+                      setInvoiceUnitWeight(e.target.value);
+                      clearFieldError('invoiceUnitWeight');
+                    }}
                     placeholder="0.00"
                     step="0.01"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    className={fieldBorderClass('invoiceUnitWeight')}
                     data-testid="input-invoice-unit-weight"
                   />
+                  {fieldErrors.invoiceUnitWeight && (
+                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -899,11 +1137,17 @@ export default function CreateShipment() {
                 <Input
                   type="number"
                   value={invoiceUnitRate}
-                  onChange={(e) => setInvoiceUnitRate(e.target.value)}
+                  onChange={(e) => {
+                    setInvoiceUnitRate(e.target.value);
+                    clearFieldError('invoiceUnitRate');
+                  }}
                   placeholder="100"
-                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  className={fieldBorderClass('invoiceUnitRate')}
                   data-testid="input-invoice-unit-rate"
                 />
+                {fieldErrors.invoiceUnitRate && (
+                  <p className="text-xs text-red-600 mt-1">This field is required</p>
+                )}
               </div>
               {invoiceQty && invoiceUnitRate && (
                 <div className="flex justify-between text-sm pt-2 border-t border-border">
@@ -921,22 +1165,7 @@ export default function CreateShipment() {
                 <p className="text-xs text-red-600">{submitError}</p>
               </div>
             )}
-          </div>
-        )}
-      </main>
 
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-border p-4 safe-bottom">
-        <div className="max-w-md mx-auto">
-          {currentStep < 4 ? (
-            <Button
-              onClick={handleNext}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
-              data-testid="button-next-step"
-            >
-              Continue
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
             <Button
               onClick={handleSubmit}
               disabled={createMutation.isPending}
@@ -949,9 +1178,9 @@ export default function CreateShipment() {
                 'Create Shipment'
               )}
             </Button>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </main>
 
       <BottomNav />
     </div>

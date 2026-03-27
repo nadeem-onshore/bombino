@@ -8,6 +8,13 @@ import bombinoLogo from '@assets/image_1768167970562.png';
 
 const slides = [
   {
+    icon: Package,
+    title: 'Create shipments on the go',
+    subtitle: 'Book shipments at the best rates',
+    color: 'text-amber-600',
+    bgGradient: 'from-amber-100/80 to-amber-50/50',
+  },
+  {
     icon: MapPin,
     title: 'Track shipments in real-time',
     subtitle: 'Status, ETA, and hold-up alerts in one place.',
@@ -15,16 +22,9 @@ const slides = [
     bgGradient: 'from-primary/10 to-primary/5',
   },
   {
-    icon: Package,
-    title: 'Create shipments in minutes',
-    subtitle: 'USA to India bookings with saved details.',
-    color: 'text-amber-600',
-    bgGradient: 'from-amber-100/80 to-amber-50/50',
-  },
-  {
     icon: Headphones,
-    title: 'Rates, history, and support',
-    subtitle: 'Check rates, view past orders, and reach support quickly.',
+    title: 'Rates, history and AI support',
+    subtitle: 'Check rates, view past orders, and get 24x7 support for queries',
     color: 'text-emerald-600',
     bgGradient: 'from-emerald-100/80 to-emerald-50/50',
   },

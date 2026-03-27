@@ -1,7 +1,7 @@
 import { Menu, Bell } from 'lucide-react';
 import { Link } from 'wouter';
 import { useAppStore } from '@/lib/store';
-import bombinoLogo from '@assets/image_1768167970562.png';
+import bombinoLogo from '@/assets/image_1768167970562.png';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -25,11 +25,11 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Menu className="w-5 h-5 text-foreground" />
         </button>
         
-        <Link href="/home" className="absolute left-1/2 -translate-x-1/2 flex items-center">
-          <img 
-            src={bombinoLogo} 
-            alt="Bombino Express" 
-            className="h-8 w-auto"
+        <Link href="/home" className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center max-w-[min(200px,55vw)]">
+          <img
+            src={bombinoLogo}
+            alt="Bombino Express"
+            className="h-8 w-auto max-h-8 object-contain object-center"
             data-testid="img-logo"
           />
         </Link>
