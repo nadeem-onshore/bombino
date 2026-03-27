@@ -1,6 +1,7 @@
 import { Home, BadgeDollarSign, Send, PackageSearch } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+import { SupportFab } from '@/components/SupportFab';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/home' },
@@ -13,7 +14,9 @@ export function BottomNav() {
   const [location] = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-primary shadow-[0_-4px_12px_rgba(0,0,0,0.12)] safe-bottom">
+    <>
+      <SupportFab />
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-primary shadow-[0_-4px_12px_rgba(0,0,0,0.12)] safe-bottom">
       <div className="flex items-center justify-around h-16 max-w-md mx-auto">
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = location === path || 
@@ -45,5 +48,6 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+    </>
   );
 }

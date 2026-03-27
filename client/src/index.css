@@ -134,6 +134,40 @@ body {
   }
 }
 
+/* BIA chat: message entrance */
+@keyframes bia-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-bia-message-in {
+  animation: bia-message-in 250ms ease-out forwards;
+}
+
+/* BIA chat: typing indicator dots */
+@keyframes bia-typing-dot {
+  0%, 60%, 100% {
+    opacity: 0.35;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.bia-typing-dot {
+  animation: bia-typing-dot 1s ease-in-out infinite;
+}
+
+.bia-typing-dot:nth-child(1) { animation-delay: 0ms; }
+.bia-typing-dot:nth-child(2) { animation-delay: 200ms; }
+.bia-typing-dot:nth-child(3) { animation-delay: 400ms; }
+
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.4);
@@ -157,6 +191,252 @@ body {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s infinite;
+}
+
+/* Support FAB: floating idle (translateY 0 → -3px → 0) */
+@keyframes fab-float {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -3px);
+  }
+}
+
+/* Support FAB: rotating sparkle aura (slow rotation + soft opacity) */
+@keyframes fab-aura-rotate {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.82;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.55;
+  }
+}
+
+/* Support FAB: icon subtle rotation (0° → 12° → 0°) */
+@keyframes fab-icon-rotate {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+
+/* Support FAB: tap sparkle burst */
+@keyframes fab-sparkle-burst {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Support FAB: white halo boundary (fixed) + red glow (breathing) */
+@keyframes fab-glow-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.75),
+      0 0 6px 2px rgba(255, 255, 255, 0.4),
+      0 0 10px rgba(198, 40, 40, 0.3),
+      0 0 20px rgba(198, 40, 40, 0.25),
+      0 0 32px rgba(198, 40, 40, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.75),
+      0 0 6px 2px rgba(255, 255, 255, 0.4),
+      0 0 14px rgba(198, 40, 40, 0.4),
+      0 0 28px rgba(198, 40, 40, 0.3),
+      0 0 44px rgba(198, 40, 40, 0.25);
+  }
+}
+
+/* FAB wrapper: position + float animation. touch-action: none so drag is not consumed as scroll. */
+.fab-wrapper {
+  position: fixed;
+  left: 50%;
+  z-index: 51;
+  width: 4rem;
+  height: 4rem;
+  overflow: visible;
+  animation: fab-float 4s ease-in-out infinite;
+  touch-action: none;
+}
+
+/* Dragged mode: fully independent viewport positioning. No centering, no bottom anchor. */
+.fab-wrapper-dragged {
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  animation: none;
+}
+
+/* Subtle scale feedback while dragging */
+.fab-button.fab-dragging {
+  transform: scale(1.03);
+}
+
+/* FAB aura: blurred sparkle halo behind button */
+.fab-aura {
+  position: absolute;
+  inset: -0.75rem;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    0 -1.5rem 1.25rem -0.25rem rgba(255, 255, 255, 0.14),
+    0 1.5rem 1.25rem -0.25rem rgba(255, 255, 255, 0.1),
+    1.5rem 0 1.25rem -0.25rem rgba(255, 255, 255, 0.12),
+    -1.5rem 0 1.25rem -0.25rem rgba(255, 255, 255, 0.1),
+    1rem 1rem 1rem -0.25rem rgba(255, 255, 255, 0.08),
+    -1rem -1rem 1rem -0.25rem rgba(255, 255, 255, 0.1),
+    -1rem 1rem 1rem -0.25rem rgba(255, 255, 255, 0.08),
+    1rem -1rem 1rem -0.25rem rgba(255, 255, 255, 0.08);
+  filter: blur(8px);
+  animation: fab-aura-rotate 12s linear infinite;
+  pointer-events: none;
+}
+
+/* FAB shimmer: diagonal sweep every 4s, 800ms sweep, fade in/out */
+@keyframes fab-shimmer {
+  0% {
+    opacity: 0;
+    background-position: -70% 0;
+  }
+  3% {
+    opacity: 0.28;
+  }
+  20% {
+    opacity: 0.32;
+    background-position: 170% 0;
+  }
+  23% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    background-position: 170% 0;
+  }
+}
+
+/* FAB button: 64px, glow, tap scale + burst */
+.fab-button {
+  position: relative;
+  display: flex;
+  width: 4rem;
+  height: 4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  @apply bg-primary text-white;
+  transition: transform 0.15s ease-out;
+  animation: fab-glow-breathe 2.5s ease-in-out infinite;
+}
+
+.fab-button:active {
+  transform: scale(0.94);
+}
+
+/* Shimmer layer: diagonal highlight sweep, does not block pointer events */
+.fab-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 28%,
+    rgba(255, 255, 255, 0.3) 48%,
+    rgba(255, 255, 255, 0.3) 52%,
+    transparent 72%,
+    transparent 100%
+  );
+  background-size: 75% 100%;
+  background-position: -70% 0;
+  background-repeat: no-repeat;
+  filter: blur(0.5px);
+  opacity: 0;
+  pointer-events: none;
+  animation: fab-shimmer 4s ease-in-out infinite;
+}
+
+.fab-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.5) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fab-button:active::after {
+  animation: fab-sparkle-burst 0.4s ease-out forwards;
+  opacity: 1;
+}
+
+/* FAB icon: subtle rotation cycle */
+.fab-icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fab-icon-rotate 5s ease-in-out infinite;
+}
+
+/* Premium metric number: subtle light sweep across text (visible, elegant) */
+@keyframes metric-text-shimmer {
+  0% {
+    background-position: 150% 50%;
+  }
+  18% {
+    background-position: -50% 50%;
+  }
+  28% {
+    background-position: -50% 50%;
+  }
+  100% {
+    background-position: 150% 50%;
+  }
+}
+
+/* Hero metric: full foreground so number reads dominant; light band for subtle shimmer */
+.metric-number-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--foreground)) 0%,
+    rgb(var(--foreground)) 28%,
+    rgb(100 116 139) 42%,
+    rgb(148 163 184) 50%,
+    rgb(100 116 139) 58%,
+    rgb(var(--foreground)) 72%,
+    rgb(var(--foreground)) 100%
+  );
+  background-size: 280% 100%;
+  background-position: 150% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: metric-text-shimmer 7s ease-in-out infinite;
 }
 
 .card-elevated {

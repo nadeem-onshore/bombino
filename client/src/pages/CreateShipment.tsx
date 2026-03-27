@@ -1,30 +1,97 @@
 import { useState } from 'react';
-import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Check, Package, User, MapPin, Send, ArrowRight, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useMutation } from '@tanstack/react-query';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
-import { calculateRateFromLb, serviceablePincodes, Shipment, TrackingEvent, lbToKg, inToCm } from '@/lib/mockData';
+import { Shipment, TrackingEvent, lbToKg, inToCm } from '@/lib/mockData';
+import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+
+interface FreeFormLineItem {
+  total: string;
+  no_of_packages: string;
+  box_no: string;
+  rate: string;
+  hscode: string;
+  description: string;
+  unit_of_measurement: string;
+  unit_weight: string;
+  igst_amount: string;
+}
+
+interface CreateShipmentPayload {
+  product_code: string;
+  destination_code: string;
+  booking_date: string;
+  booking_time: string;
+  pcs: string;
+  shipment_value: string;
+  shipment_value_currency: string;
+  actual_weight: string;
+  shipment_invoice_no: string;
+  shipment_invoice_date: string;
+  shipment_content: string;
+  new_docket_free_form_invoice?: string;
+  free_form_invoice_type_id?: string;
+  free_form_currency?: string;
+  terms_of_trade?: string;
+  entry_type?: number;
+  api_service_code: string;
+  shipper_name: string;
+  shipper_company_name: string;
+  shipper_contact_no: string;
+  shipper_email: string;
+  shipper_address_line_1: string;
+  shipper_city: string;
+  shipper_state: string;
+  shipper_country: string;
+  shipper_zip_code: string;
+  shipper_gstin_type?: string;
+  shipper_gstin_no?: string;
+  consignee_name: string;
+  consignee_company_name: string;
+  consignee_contact_no: string;
+  consignee_email: string;
+  consignee_address_line_1: string;
+  consignee_city: string;
+  consignee_state: string;
+  consignee_country: string;
+  consignee_zip_code: string;
+  docket_items: { actual_weight: string; length: string; width: string; height: string; number_of_boxes: string }[];
+  free_form_line_items?: FreeFormLineItem[];
+}
+
+interface CreateShipmentResponse {
+  success: boolean;
+  errors: string[];
+  data: {
+    docket_id: number;
+    awb_no: string;
+  };
+}
 
 const steps = [
   { id: 1, title: 'Sender', icon: User },
   { id: 2, title: 'Receiver', icon: MapPin },
   { id: 3, title: 'Package', icon: Package },
+  { id: 4, title: 'Invoice', icon: FileText },
 ];
 
 export default function CreateShipment() {
   const [, setLocation] = useLocation();
   const { isLoggedIn, user, addShipment, addNotification } = useAppStore();
   const [currentStep, setCurrentStep] = useState(1);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [newAWB, setNewAWB] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
-  const [senderName, setSenderName] = useState(isLoggedIn ? `${user?.firstName} ${user?.lastName}` : '');
-  const [senderEmail, setSenderEmail] = useState(isLoggedIn ? user?.email || '' : '');
-  const [senderPhone, setSenderPhone] = useState(isLoggedIn ? user?.phone || '' : '');
+  const [senderName, setSenderName] = useState(isLoggedIn ? user?.fullName ?? '' : '');
+  const [senderEmail, setSenderEmail] = useState(isLoggedIn ? user?.email ?? '' : '');
+  const [senderPhone, setSenderPhone] = useState('');
+  const [senderCompany, setSenderCompany] = useState('');
   const [senderCity, setSenderCity] = useState('');
   const [senderState, setSenderState] = useState('');
   const [senderZip, setSenderZip] = useState('');
@@ -32,14 +99,13 @@ export default function CreateShipment() {
 
   const [receiverName, setReceiverName] = useState('');
   const [receiverPhone, setReceiverPhone] = useState('');
+  const [receiverEmail, setReceiverEmail] = useState('');
+  const [receiverCompany, setReceiverCompany] = useState('');
   const [receiverCity, setReceiverCity] = useState('');
   const [receiverState, setReceiverState] = useState('');
-  const [receiverPincode, setReceiverPincode] = useState('');
+  const [receiverZip, setReceiverZip] = useState('');
   const [receiverAddress, setReceiverAddress] = useState('');
-  const [pincodeError, setPincodeError] = useState('');
 
-  const [productType, setProductType] = useState<'Document' | 'Package'>('Package');
-  const [serviceType, setServiceType] = useState<'Standard' | 'Express'>('Standard');
   const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
   const [weight, setWeight] = useState('2');
   const [pieces, setPieces] = useState('1');
@@ -47,6 +113,109 @@ export default function CreateShipment() {
   const [dimL, setDimL] = useState('');
   const [dimW, setDimW] = useState('');
   const [dimH, setDimH] = useState('');
+  const [shipmentValue, setShipmentValue] = useState('');
+  const [shipmentContent, setShipmentContent] = useState('');
+
+  const [invoiceQty, setInvoiceQty] = useState('1');
+  const [invoiceUnitWeight, setInvoiceUnitWeight] = useState('');
+  const [invoiceUnitRate, setInvoiceUnitRate] = useState('');
+
+  const [stepError, setStepError] = useState('');
+
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateShipmentPayload) =>
+      apiRequest('POST', '/api/shipments', payload).then((r) => r.json() as Promise<CreateShipmentResponse>),
+    onSuccess: (data) => {
+      if (!data.success) {
+        setSubmitError(data.errors?.join(', ') || 'Shipment creation failed');
+        return;
+      }
+      const awb = data.data.awb_no;
+      const now = new Date();
+      const w = parseFloat(weight) || 1;
+      const weightLb = weightUnit === 'lb' ? w : w / 0.453592;
+      const weightKg = weightUnit === 'kg' ? w : lbToKg(w);
+
+      let dimLIn: number | undefined;
+      let dimWIn: number | undefined;
+      let dimHIn: number | undefined;
+      let dimLCm: number | undefined;
+      let dimWCm: number | undefined;
+      let dimHCm: number | undefined;
+
+      if (dimL || dimW || dimH) {
+        if (dimUnit === 'in') {
+          dimLIn = parseFloat(dimL) || undefined;
+          dimWIn = parseFloat(dimW) || undefined;
+          dimHIn = parseFloat(dimH) || undefined;
+          dimLCm = dimLIn ? inToCm(dimLIn) : undefined;
+          dimWCm = dimWIn ? inToCm(dimWIn) : undefined;
+          dimHCm = dimHIn ? inToCm(dimHIn) : undefined;
+        } else {
+          dimLCm = parseFloat(dimL) || undefined;
+          dimWCm = parseFloat(dimW) || undefined;
+          dimHCm = parseFloat(dimH) || undefined;
+          dimLIn = dimLCm ? dimLCm / 2.54 : undefined;
+          dimWIn = dimWCm ? dimWCm / 2.54 : undefined;
+          dimHIn = dimHCm ? dimHCm / 2.54 : undefined;
+        }
+      }
+
+      const eta = new Date();
+      eta.setDate(eta.getDate() + 5); // Bombino Premium DDP is express-grade
+
+      const trackingEvents: TrackingEvent[] = [{
+        id: `event-${Math.random().toString(36).slice(2)}`,
+        status: 'Pickup Scheduled',
+        note: 'Shipment pickup has been scheduled',
+        location: `${senderCity}, ${senderState}, India`,
+        timestamp: now,
+      }];
+
+      const shipment: Shipment = {
+        id: Math.random().toString(36).slice(2),
+        awb,
+        userId: user?.id ?? '',
+        originCountry: 'India',
+        originCity: senderCity,
+        originState: senderState,
+        originZip: senderZip,
+        destCountry: 'USA',
+        destCity: receiverCity,
+        destState: receiverState,
+        destPincode: receiverZip,
+        weightLb: parseFloat(weightLb.toFixed(1)),
+        weightKg: parseFloat(weightKg.toFixed(2)),
+        pieces: parseInt(pieces) || 1,
+        dimLIn, dimWIn, dimHIn, dimLCm, dimWCm, dimHCm,
+        productType: 'Package' as const,
+        serviceType: 'Express' as const,
+        status: 'Pickup Scheduled',
+        priceEstimate: 0,
+        eta,
+        lastUpdateAt: now,
+        createdAt: now,
+        currency: 'USD',
+        trackingEvents,
+      };
+
+      addShipment(shipment);
+      addNotification({
+        id: `notif-${Math.random().toString(36).slice(2)}`,
+        userId: user?.id ?? '',
+        title: 'Shipment Created',
+        body: `Your shipment ${awb} has been created.`,
+        severity: 'info',
+        createdAt: now,
+      });
+
+      setNewAWB(awb);
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message.replace(/^\d+:\s*/, '') : 'Shipment creation failed';
+      setSubmitError(msg);
+    },
+  });
 
   if (!isLoggedIn) {
     return (
@@ -85,142 +254,7 @@ export default function CreateShipment() {
     );
   }
 
-  const validatePincode = (pincode: string) => {
-    if (pincode.length === 6) {
-      if (!serviceablePincodes.includes(pincode)) {
-        setPincodeError('Not serviceable. Try: 400001, 110001');
-        return false;
-      }
-      setPincodeError('');
-      return true;
-    }
-    setPincodeError('');
-    return false;
-  };
-
-  const handleNext = () => {
-    if (currentStep === 2 && receiverPincode) {
-      if (!validatePincode(receiverPincode)) {
-        return;
-      }
-    }
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    } else {
-      setLocation('/home');
-    }
-  };
-
-  const generateAWB = () => 'BMB' + Math.random().toString().slice(2, 11);
-
-  const getWeightLb = (): number => {
-    const w = parseFloat(weight) || 1;
-    return weightUnit === 'lb' ? w : w / 0.453592;
-  };
-
-  const getWeightKg = (): number => {
-    const w = parseFloat(weight) || 1;
-    return weightUnit === 'kg' ? w : w * 0.453592;
-  };
-
-  const handleSubmit = () => {
-    const awb = generateAWB();
-    const now = new Date();
-    const eta = new Date();
-    eta.setDate(eta.getDate() + (serviceType === 'Express' ? 5 : 8));
-
-    const weightLb = getWeightLb();
-    const weightKg = getWeightKg();
-    const priceEstimate = calculateRateFromLb(weightLb, serviceType);
-
-    let dimLIn: number | undefined;
-    let dimWIn: number | undefined;
-    let dimHIn: number | undefined;
-    let dimLCm: number | undefined;
-    let dimWCm: number | undefined;
-    let dimHCm: number | undefined;
-
-    if (dimL || dimW || dimH) {
-      if (dimUnit === 'in') {
-        dimLIn = parseFloat(dimL) || undefined;
-        dimWIn = parseFloat(dimW) || undefined;
-        dimHIn = parseFloat(dimH) || undefined;
-        dimLCm = dimLIn ? inToCm(dimLIn) : undefined;
-        dimWCm = dimWIn ? inToCm(dimWIn) : undefined;
-        dimHCm = dimHIn ? inToCm(dimHIn) : undefined;
-      } else {
-        dimLCm = parseFloat(dimL) || undefined;
-        dimWCm = parseFloat(dimW) || undefined;
-        dimHCm = parseFloat(dimH) || undefined;
-        dimLIn = dimLCm ? dimLCm / 2.54 : undefined;
-        dimWIn = dimWCm ? dimWCm / 2.54 : undefined;
-        dimHIn = dimHCm ? dimHCm / 2.54 : undefined;
-      }
-    }
-
-    const trackingEvents: TrackingEvent[] = [
-      {
-        id: `event-${Math.random().toString(36).slice(2)}`,
-        status: 'Pickup Scheduled',
-        note: 'Shipment pickup has been scheduled',
-        location: `${senderCity}, ${senderState}, USA`,
-        timestamp: now,
-      },
-    ];
-
-    const shipment: Shipment = {
-      id: Math.random().toString(36).slice(2),
-      awb,
-      userId: user?.id || '',
-      originCountry: 'USA',
-      originCity: senderCity,
-      originState: senderState,
-      originZip: senderZip,
-      destCountry: 'India',
-      destCity: receiverCity,
-      destState: receiverState,
-      destPincode: receiverPincode,
-      weightLb: parseFloat(weightLb.toFixed(1)),
-      weightKg: parseFloat(weightKg.toFixed(2)),
-      pieces: parseInt(pieces) || 1,
-      dimLIn,
-      dimWIn,
-      dimHIn,
-      dimLCm,
-      dimWCm,
-      dimHCm,
-      productType,
-      serviceType,
-      status: 'Pickup Scheduled',
-      priceEstimate,
-      eta,
-      lastUpdateAt: now,
-      createdAt: now,
-      currency: 'USD',
-      trackingEvents,
-    };
-
-    addShipment(shipment);
-    addNotification({
-      id: `notif-${Math.random().toString(36).slice(2)}`,
-      userId: user?.id || '',
-      title: 'Shipment Created',
-      body: `Your shipment ${awb} has been created.`,
-      severity: 'info',
-      createdAt: now,
-    });
-
-    setNewAWB(awb);
-    setShowSuccess(true);
-  };
-
-  if (showSuccess) {
+  if (newAWB) {
     return (
       <div className="min-h-screen bg-background pb-20" data-testid="screen-create-success">
         <main className="px-4 py-16 max-w-md mx-auto text-center">
@@ -259,7 +293,132 @@ export default function CreateShipment() {
     );
   }
 
-  const estimatedPrice = calculateRateFromLb(getWeightLb(), serviceType);
+  const handleNext = () => {
+    setStepError('');
+    if (currentStep === 1) {
+      if (!senderName.trim() || !senderPhone.trim() || !senderAddress.trim() || !senderCity.trim() || !senderState.trim() || !senderZip.trim()) {
+        setStepError('Please fill in all required sender fields.');
+        return;
+      }
+    }
+    if (currentStep === 2) {
+      if (!receiverName.trim() || !receiverPhone.trim() || !receiverAddress.trim() || !receiverCity.trim() || !receiverState.trim() || !receiverZip.trim()) {
+        setStepError('Please fill in all required receiver fields.');
+        return;
+      }
+    }
+    if (currentStep === 3) {
+      if (!weight || parseFloat(weight) <= 0) {
+        setStepError('Please enter a valid weight.');
+        return;
+      }
+      if (!shipmentValue || parseFloat(shipmentValue) <= 0) {
+        setStepError('Please enter a shipment value.');
+        return;
+      }
+      if (!shipmentContent.trim()) {
+        setStepError('Please describe the shipment content.');
+        return;
+      }
+    }
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    } else {
+      setLocation('/home');
+    }
+  };
+
+  const getWeightLb = (): number => {
+    const w = parseFloat(weight) || 1;
+    return weightUnit === 'lb' ? w : w / 0.453592;
+  };
+
+  const handleSubmit = () => {
+    setSubmitError('');
+    const weightLb = getWeightLb();
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+
+    const lengthVal = dimL ? (dimUnit === 'cm' ? String(parseFloat(dimL) / 2.54) : dimL) : '0';
+    const widthVal = dimW ? (dimUnit === 'cm' ? String(parseFloat(dimW) / 2.54) : dimW) : '0';
+    const heightVal = dimH ? (dimUnit === 'cm' ? String(parseFloat(dimH) / 2.54) : dimH) : '0';
+
+    const qty = parseInt(invoiceQty) || 1;
+    const rate = parseFloat(invoiceUnitRate) || 0;
+    const total = (qty * rate).toFixed(2);
+
+    const payload: CreateShipmentPayload = {
+      // TODO: product_code hardcoded — update when ITD provides final mapping
+      product_code: 'SPX',
+      destination_code: 'US',
+      booking_date: todayStr,
+      booking_time: timeStr,
+      pcs: String(parseInt(pieces) || 1),
+      shipment_value: shipmentValue || '0',
+      shipment_value_currency: 'USD',
+      actual_weight: String(weightLb.toFixed(2)),
+      // TODO: shipment_invoice_no hardcoded — update when invoice numbering is implemented
+      shipment_invoice_no: 'TESTINV01',
+      shipment_invoice_date: todayStr,
+      shipment_content: shipmentContent || 'GIFTS',
+      new_docket_free_form_invoice: '1',
+      free_form_invoice_type_id: '1',
+      free_form_currency: 'USD',
+      terms_of_trade: 'FOB',
+      entry_type: 2,
+      // TODO: api_service_code hardcoded — update when ITD provides final mapping
+      api_service_code: 'BOMBINO PREMIUM DDP SERVICE',
+      shipper_name: senderName,
+      shipper_company_name: senderCompany || senderName,
+      shipper_contact_no: senderPhone,
+      shipper_email: senderEmail,
+      shipper_address_line_1: senderAddress,
+      shipper_city: senderCity,
+      shipper_state: senderState,
+      shipper_country: 'IN',
+      shipper_zip_code: senderZip,
+      // TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented
+      shipper_gstin_type: 'AADHAAR NUMBER',
+      // TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented
+      shipper_gstin_no: '123456789012',
+      consignee_name: receiverName,
+      consignee_company_name: receiverCompany || receiverName,
+      consignee_contact_no: receiverPhone,
+      consignee_email: receiverEmail || senderEmail,
+      consignee_address_line_1: receiverAddress,
+      consignee_city: receiverCity,
+      consignee_state: receiverState,
+      consignee_country: 'US',
+      consignee_zip_code: receiverZip,
+      docket_items: [{
+        actual_weight: String(weightLb.toFixed(2)),
+        length: lengthVal,
+        width: widthVal,
+        height: heightVal,
+        number_of_boxes: String(parseInt(pieces) || 1),
+      }],
+      free_form_line_items: [{
+        total,
+        no_of_packages: String(qty),
+        box_no: '1',
+        rate: String(rate),
+        // TODO: hscode hardcoded — update when HS code lookup is implemented
+        hscode: '456789',
+        // TODO: description hardcoded — update when item descriptions are configurable
+        description: 'GIFTS',
+        unit_of_measurement: 'PCS',
+        unit_weight: invoiceUnitWeight || '0.00',
+        igst_amount: '0.00',
+      }],
+    };
+
+    createMutation.mutate(payload);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-28" data-testid="screen-create">
@@ -282,7 +441,7 @@ export default function CreateShipment() {
             const Icon = step.icon;
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
-            
+
             return (
               <div key={step.id} className="flex items-center">
                 <div className="flex flex-col items-center">
@@ -319,18 +478,28 @@ export default function CreateShipment() {
         {currentStep === 1 && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-              Origin: USA (fixed for this demo)
+              Origin: India (fixed)
             </div>
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
               <div>
-                <Label className="text-xs text-muted-foreground">Full Name</Label>
+                <Label className="text-xs text-muted-foreground">Full Name <span className="text-red-400">*</span></Label>
                 <Input
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
                   placeholder="John Doe"
                   className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                   data-testid="input-sender-name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
+                <Input
+                  value={senderCompany}
+                  onChange={(e) => setSenderCompany(e.target.value)}
+                  placeholder="Company name"
+                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  data-testid="input-sender-company"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -349,6 +518,7 @@ export default function CreateShipment() {
                   <Input
                     value={senderPhone}
                     onChange={(e) => setSenderPhone(e.target.value)}
+                    placeholder="+91"
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-sender-phone"
                   />
@@ -384,23 +554,48 @@ export default function CreateShipment() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">ZIP</Label>
+                  <Label className="text-xs text-muted-foreground">Pincode</Label>
                   <Input
                     value={senderZip}
                     onChange={(e) => setSenderZip(e.target.value)}
+                    maxLength={6}
                     className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-sender-zip"
                   />
                 </div>
               </div>
             </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">KYC Details</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">Required for Indian customs export compliance.</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">KYC Type</span>
+                  {/* TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented */}
+                  <span className="font-medium text-foreground">AADHAAR NUMBER</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Aadhaar No.</span>
+                  {/* TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented */}
+                  <span className="font-medium text-foreground">123456789012</span>
+                </div>
+              </div>
+            </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
           </div>
         )}
 
         {currentStep === 2 && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-              Destination: India (fixed for this demo)
+              Destination: USA (fixed)
             </div>
 
             <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
@@ -414,14 +609,36 @@ export default function CreateShipment() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Phone</Label>
+                <Label className="text-xs text-muted-foreground">Company Name <span className="text-muted-foreground/60">(optional)</span></Label>
                 <Input
-                  value={receiverPhone}
-                  onChange={(e) => setReceiverPhone(e.target.value)}
-                  placeholder="+91"
+                  value={receiverCompany}
+                  onChange={(e) => setReceiverCompany(e.target.value)}
+                  placeholder="Company name"
                   className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
-                  data-testid="input-receiver-phone"
+                  data-testid="input-receiver-company"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Phone</Label>
+                  <Input
+                    value={receiverPhone}
+                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    placeholder="+1"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-receiver-phone"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={receiverEmail}
+                    onChange={(e) => setReceiverEmail(e.target.value)}
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-receiver-email"
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Address</Label>
@@ -452,78 +669,29 @@ export default function CreateShipment() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Pincode</Label>
+                  <Label className="text-xs text-muted-foreground">ZIP Code</Label>
                   <Input
-                    value={receiverPincode}
-                    onChange={(e) => {
-                      setReceiverPincode(e.target.value);
-                      if (e.target.value.length === 6) validatePincode(e.target.value);
-                    }}
-                    maxLength={6}
-                    className={cn('h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl', pincodeError && 'border-red-500')}
+                    value={receiverZip}
+                    onChange={(e) => setReceiverZip(e.target.value)}
+                    maxLength={5}
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
                     data-testid="input-receiver-pincode"
                   />
                 </div>
               </div>
-              {pincodeError && (
-                <p className="text-xs text-red-500">{pincodeError}</p>
-              )}
             </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
           </div>
         )}
 
         {currentStep === 3 && (
           <div className="space-y-4 animate-fade-in">
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['Document', 'Package'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setProductType(type)}
-                    className={cn(
-                      'p-3 rounded-xl border-2 transition-all text-sm font-medium',
-                      productType === type
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-border'
-                    )}
-                    data-testid={`button-product-${type.toLowerCase()}`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">Service</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['Standard', 'Express'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setServiceType(type)}
-                    className={cn(
-                      'p-3 rounded-xl border-2 transition-all text-left',
-                      serviceType === type
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border'
-                    )}
-                    data-testid={`button-service-${type.toLowerCase()}`}
-                  >
-                    <span className={cn(
-                      'font-semibold text-sm',
-                      serviceType === type ? 'text-primary' : ''
-                    )}>
-                      {type}
-                    </span>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {type === 'Express' ? '~5 days' : '~8 days'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <Label className="text-sm font-semibold">Weight</Label>
@@ -605,51 +773,161 @@ export default function CreateShipment() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground">L</Label>
-                  <Input
-                    type="number"
-                    value={dimL}
-                    onChange={(e) => setDimL(e.target.value)}
-                    placeholder="12"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
-                  />
+                  <Input type="number" value={dimL} onChange={(e) => setDimL(e.target.value)} placeholder="12" className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">W</Label>
-                  <Input
-                    type="number"
-                    value={dimW}
-                    onChange={(e) => setDimW(e.target.value)}
-                    placeholder="10"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
-                  />
+                  <Input type="number" value={dimW} onChange={(e) => setDimW(e.target.value)} placeholder="10" className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl" />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">H</Label>
-                  <Input
-                    type="number"
-                    value={dimH}
-                    onChange={(e) => setDimH(e.target.value)}
-                    placeholder="8"
-                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
-                  />
+                  <Input type="number" value={dimH} onChange={(e) => setDimH(e.target.value)} placeholder="8" className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Estimated Total</span>
-                <span className="text-2xl font-bold text-primary">${estimatedPrice}</span>
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Shipment Value</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Label className="text-xs text-muted-foreground">Declared Value</Label>
+                  <Input
+                    type="number"
+                    value={shipmentValue}
+                    onChange={(e) => setShipmentValue(e.target.value)}
+                    placeholder="100"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    min="0"
+                    step="0.01"
+                    data-testid="input-shipment-value"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Currency</Label>
+                  <div className="h-11 mt-1 flex items-center justify-center bg-muted/50 border border-border rounded-xl text-sm font-medium text-muted-foreground">
+                    USD
+                  </div>
+                </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Final charges may vary</p>
+              <p className="text-[10px] text-muted-foreground mt-1.5">Customs declared value for international shipping</p>
             </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Shipment Content</Label>
+              <Input
+                value={shipmentContent}
+                onChange={(e) => setShipmentContent(e.target.value)}
+                placeholder="e.g. BOOKS, CLOTHES, ELECTRONICS"
+                className="h-11 text-sm bg-muted/30 border-border rounded-xl"
+                data-testid="input-shipment-content"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1.5">Describe what you're shipping for customs</p>
+            </div>
+
+            {stepError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{stepError}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStep === 4 && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
+              Required for Indian customs clearance. These details appear on the commercial invoice.
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <Label className="text-sm font-semibold mb-3 block">Service Details</Label>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Product Code</span>
+                  {/* TODO: product_code hardcoded — update when ITD provides final mapping */}
+                  <span className="font-medium text-foreground">SPX</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Service</span>
+                  {/* TODO: api_service_code hardcoded — update when ITD provides final mapping */}
+                  <span className="font-medium text-foreground text-right text-xs">BOMBINO PREMIUM DDP</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">HS Code</span>
+                  {/* TODO: hscode hardcoded — update when HS code lookup is implemented */}
+                  <span className="font-medium text-foreground">456789</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+              <Label className="text-sm font-semibold">Invoice Item</Label>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                {/* TODO: description hardcoded — update when item descriptions are configurable */}
+                <div className="h-11 mt-1 px-3 flex items-center bg-muted/50 border border-border rounded-xl text-sm text-muted-foreground">
+                  GIFTS
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Quantity</Label>
+                  <Input
+                    type="number"
+                    value={invoiceQty}
+                    onChange={(e) => setInvoiceQty(e.target.value)}
+                    min="1"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-invoice-qty"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Unit Weight (kg)</Label>
+                  <Input
+                    type="number"
+                    value={invoiceUnitWeight}
+                    onChange={(e) => setInvoiceUnitWeight(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                    data-testid="input-invoice-unit-weight"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Unit Rate (USD)</Label>
+                <Input
+                  type="number"
+                  value={invoiceUnitRate}
+                  onChange={(e) => setInvoiceUnitRate(e.target.value)}
+                  placeholder="100"
+                  className="h-11 mt-1 text-sm bg-muted/30 border-border rounded-xl"
+                  data-testid="input-invoice-unit-rate"
+                />
+              </div>
+              {invoiceQty && invoiceUnitRate && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-semibold">
+                    ${(parseFloat(invoiceQty || '0') * parseFloat(invoiceUnitRate || '0')).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {submitError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{submitError}</p>
+              </div>
+            )}
           </div>
         )}
       </main>
 
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-border p-4 safe-bottom">
         <div className="max-w-md mx-auto">
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <Button
               onClick={handleNext}
               className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
@@ -661,10 +939,15 @@ export default function CreateShipment() {
           ) : (
             <Button
               onClick={handleSubmit}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md"
+              disabled={createMutation.isPending}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-sm font-semibold rounded-xl shadow-md disabled:opacity-70"
               data-testid="button-submit-shipment"
             >
-              Create Shipment
+              {createMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Create Shipment'
+              )}
             </Button>
           )}
         </div>

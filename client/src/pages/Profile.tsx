@@ -1,8 +1,9 @@
-import { ArrowLeft, User, Mail, Phone, LogOut, MessageCircle, Phone as PhoneIcon, Send } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, LogOut, Phone as PhoneIcon, Send } from 'lucide-react';
 import { useLocation, Link } from 'wouter';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import bombinoLogo from '@assets/generated_images/bombino_express_logo_design.png';
+import bombinoLogo from '@/assets/image_1768167970562.png';
+import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 import { BottomNav } from '@/components/BottomNav';
 
 export default function Profile() {
@@ -55,7 +56,7 @@ export default function Profile() {
       <header className="sticky top-0 z-50 bg-white border-b border-border safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
-            onClick={() => setLocation(-1 as any)}
+            onClick={() => window.history.back()}
             className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
             data-testid="button-back-profile"
           >
@@ -71,7 +72,7 @@ export default function Profile() {
             <User className="w-10 h-10 text-primary" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">
-            {user?.firstName} {user?.lastName}
+            {user?.fullName}
           </h2>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
         </div>
@@ -91,8 +92,8 @@ export default function Profile() {
               <Phone className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-[10px] text-muted-foreground">Phone</p>
-              <p className="font-medium text-sm">{user?.phone}</p>
+              <p className="text-[10px] text-muted-foreground">Username</p>
+              <p className="font-medium text-sm">{user?.username}</p>
             </div>
           </div>
         </div>
@@ -106,7 +107,7 @@ export default function Profile() {
             data-testid="link-profile-whatsapp"
           >
             <div className="w-9 h-9 bg-green-50 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-green-600" />
+              <img src={whatsAppLogo} alt="WhatsApp" className="w-4 h-4 object-contain" />
             </div>
             <div className="flex-1">
               <p className="font-medium text-sm">WhatsApp Support</p>

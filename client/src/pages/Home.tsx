@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'wouter';
-import { Search, ArrowRight, BadgeDollarSign, Send, MessageCircle, Phone, Bell, ChevronRight } from 'lucide-react';
+import { Search, ArrowRight, BadgeDollarSign, Send, Phone, Bell, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { SideMenu } from '@/components/SideMenu';
@@ -8,9 +8,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import globeImage from '@assets/generated_images/globe_with_shipping_routes.png';
-import packagesImage from '@assets/generated_images/packages_being_shipped_fast.png';
-import customersImage from '@assets/generated_images/happy_global_customers.png';
+import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,10 +34,10 @@ export default function Home() {
       <Header onMenuClick={() => setMenuOpen(true)} />
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <main className="px-4 py-5 max-w-md mx-auto space-y-6">
+      <main className="px-4 py-5 max-w-md mx-auto space-y-7">
         {isLoggedIn && (
           <p className="text-muted-foreground text-sm -mb-2">
-            Welcome back, <span className="font-semibold text-foreground">{user?.firstName}</span>
+            Welcome back, <span className="font-semibold text-foreground">{user?.fullName?.split(' ')[0] || user?.email}</span>
           </p>
         )}
 
@@ -79,10 +77,10 @@ export default function Home() {
         <div className="flex gap-3" data-testid="zone-actions">
           <Link
             href="/rates"
-            className="flex-1 flex items-center gap-3 p-3.5 bg-white rounded-xl border border-border hover:border-amber-200 hover:bg-amber-50/30 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center gap-3 p-4 bg-white rounded-xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-amber-200/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-all"
             data-testid="button-get-rates"
           >
-            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 border border-amber-100/80">
               <BadgeDollarSign className="w-5 h-5 text-amber-600" />
             </div>
             <div>
@@ -93,11 +91,11 @@ export default function Home() {
 
           <Link
             href="/create"
-            className="flex-1 flex items-center gap-3 p-3.5 bg-white rounded-xl border border-border hover:border-emerald-200 hover:bg-emerald-50/30 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center gap-3 p-4 bg-white rounded-xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-primary/20 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-all"
             data-testid="button-ship"
           >
-            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-              <Send className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center flex-shrink-0 border border-primary/10">
+              <Send className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="font-medium text-sm text-foreground">Ship Now</p>
@@ -108,16 +106,16 @@ export default function Home() {
 
         {/* ZONE 3: Auth Banner (Guest Only) */}
         {!isLoggedIn && (
-          <div className="flex items-center justify-between py-3 px-1" data-testid="zone-auth">
+          <div className="flex items-center justify-between py-4 px-1" data-testid="zone-auth">
             <p className="text-sm text-muted-foreground">Sign in to manage your shipments</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <Link href="/login">
-                <Button size="sm" className="h-9 px-4 bg-primary hover:bg-primary/90 rounded-lg text-xs font-medium shadow-sm" data-testid="button-login">
+                <Button size="sm" className="h-9 px-4 bg-primary hover:bg-primary/90 rounded-xl text-xs font-medium shadow-[0_2px_8px_rgba(198,40,40,0.2)]" data-testid="button-login">
                   Login
                 </Button>
               </Link>
               <Link href="/signup">
-                <Button size="sm" variant="outline" className="h-9 px-4 rounded-lg text-xs font-medium border-border text-foreground hover:bg-muted" data-testid="button-signup">
+                <Button size="sm" variant="outline" className="h-9 px-4 rounded-xl text-xs font-medium border-border text-foreground hover:bg-muted/80" data-testid="button-signup">
                   Sign Up
                 </Button>
               </Link>
@@ -125,73 +123,64 @@ export default function Home() {
           </div>
         )}
 
-        {/* ZONE 4: Support + Trust (Guest Only, Lightweight) */}
+        {/* ZONE 4: Support + Trust (Guest Only) */}
         {!isLoggedIn && (
           <>
-            {/* Support Pills */}
-            <div className="flex gap-2" data-testid="zone-support">
+            {/* Support Pills - refined */}
+            <div className="flex gap-3" data-testid="zone-support">
               <a
                 href="https://wa.me/0000000000?text=Hi%20Bombino%20Support"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-full bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 active:scale-[0.97] transition-all"
+                className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-white border border-border text-green-700 text-sm font-medium shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-green-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-all"
                 data-testid="button-whatsapp-home"
               >
-                <MessageCircle className="w-4 h-4" />
+                <img src={whatsAppLogo} alt="WhatsApp" className="w-4 h-4 object-contain" />
                 WhatsApp
               </a>
               <a
                 href="tel:+10000000000"
-                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-full bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 active:scale-[0.97] transition-all"
+                className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-white border border-border text-foreground text-sm font-medium shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-primary/20 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-all"
                 data-testid="button-call-home"
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-4 h-4 text-muted-foreground" />
                 Call Us
               </a>
             </div>
 
-            {/* Why Bombino - Enhanced Section */}
-            <div className="rounded-2xl overflow-hidden" data-testid="zone-trust">
-              <div className="bg-gradient-to-br from-primary/8 to-primary/3 px-5 py-4">
-                <h2 className="text-base font-semibold text-foreground mb-1">Why Bombino?</h2>
-                <p className="text-xs text-muted-foreground">Trusted by businesses across the world</p>
+            {/* Why Bombino - minimal editorial, center-aligned, horizontal metrics */}
+            <section className="pt-2 text-center" data-testid="zone-trust">
+              <div className="px-1 pb-8">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground/90 mb-1">Why <span className="text-primary">Bombino</span>?</h2>
+                <p className="text-xs text-muted-foreground/90 tracking-wide">Trusted worldwide. Reliable, efficient, premium logistics.</p>
               </div>
-              
-              <div className="bg-white p-4 space-y-3">
-                {/* 30 Years */}
-                <div className="flex items-center gap-4 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-transparent border border-blue-100/50">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-blue-100 flex-shrink-0">
-                    <img src={globeImage} alt="Global shipping" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xl font-bold text-foreground">30+ Years</p>
-                    <p className="text-xs text-muted-foreground">Of excellence in USA-India shipping</p>
-                  </div>
+
+              <div className="flex flex-wrap justify-center gap-x-8 gap-y-8 sm:gap-x-10">
+                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+                    <span className="metric-number-shimmer">30+</span>
+                  </p>
+                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Years</p>
+                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Of global logistics excellence</p>
                 </div>
 
-                {/* 140kg/hour */}
-                <div className="flex items-center gap-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-transparent border border-amber-100/50">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-amber-100 flex-shrink-0">
-                    <img src={packagesImage} alt="Fast shipping" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xl font-bold text-foreground">140 kg</p>
-                    <p className="text-xs text-muted-foreground">Shipped every hour, non-stop</p>
-                  </div>
+                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+                    <span className="metric-number-shimmer">140+</span>
+                  </p>
+                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Kilograms</p>
+                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Shipped around the world per hour</p>
                 </div>
 
-                {/* 250+ Clients */}
-                <div className="flex items-center gap-4 p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-transparent border border-emerald-100/50">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-emerald-100 flex-shrink-0">
-                    <img src={customersImage} alt="Happy customers" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xl font-bold text-foreground">250+</p>
-                    <p className="text-xs text-muted-foreground">Happy clients across the world</p>
-                  </div>
+                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+                    <span className="metric-number-shimmer">250+</span>
+                  </p>
+                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Happy Clients</p>
+                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Sending and receiving shipments worldwide</p>
                 </div>
               </div>
-            </div>
+            </section>
           </>
         )}
 

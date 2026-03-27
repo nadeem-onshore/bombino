@@ -1,10 +1,78 @@
+import "dotenv/config";
+import path from "path";
+import fs from "fs";
+// #region agent log
+const DEBUG_LOG = path.join(process.cwd(), ".cursor", "debug-643d35.log");
+function debugLog(payload: Record<string, unknown>) {
+  try {
+    fs.mkdirSync(path.dirname(DEBUG_LOG), { recursive: true });
+    fs.appendFileSync(DEBUG_LOG, JSON.stringify(payload) + "\n");
+  } catch (_) {}
+}
+(function () {
+  const key = process.env.OPENAI_API_KEY;
+  const cwd = process.cwd();
+  const envPath = path.resolve(cwd, ".env");
+  const payload = {
+    sessionId: "643d35",
+    runId: "startup",
+    hypothesisId: "H1_env",
+    location: "index.ts:env-check",
+    message: "runtime env loading",
+    data: {
+      cwd,
+      envPath,
+      keyUndefined: key === undefined,
+      keyType: typeof key,
+      keyLength: typeof key === "string" ? key.length : 0,
+      keyTrimmedLength: typeof key === "string" ? key.trim().length : 0,
+      keyHasLeadingSpace: typeof key === "string" && key.length > 0 && key[0] === " ",
+      keyHasTrailingSpace: typeof key === "string" && key.length > 0 && key[key.length - 1] === " ",
+      keyWrappedInQuotes:
+        typeof key === "string" &&
+        key.length >= 2 &&
+        ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))),
+      keyHasNewline: typeof key === "string" && (key.includes("\n") || key.includes("\r")),
+      keyValidPrefix: typeof key === "string" && key.trim().startsWith("sk-"),
+    },
+    timestamp: Date.now(),
+  };
+  debugLog(payload);
+  fetch("http://127.0.0.1:7701/ingest/99554fe6-af8f-4c6f-9a0a-628d3111f8a2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "643d35" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+})();
+// #endregion
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "pg";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
 const httpServer = createServer(app);
+
+// ─── Session + Auth ───────────────────────────────────────────────────────────
+const PgStore = connectPgSimple(session);
+const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.use(
+  session({
+    store: new PgStore({ pool: sessionPool, createTableIfMissing: true }),
+    secret: process.env.SESSION_SECRET ?? "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
+  })
+);
 
 declare module "http" {
   interface IncomingMessage {
@@ -36,6 +104,21 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
+  // #region agent log
+  if (path === "/api/support/chat" && req.method === "POST") {
+    try {
+      debugLog({
+        sessionId: "643d35",
+        runId: "request",
+        hypothesisId: "H0_incoming",
+        location: "index.ts:middleware",
+        message: "incoming POST /api/support/chat",
+        data: {},
+        timestamp: Date.now(),
+      });
+    } catch (_) {}
+  }
+  // #endregion
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -48,10 +131,11 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      if (path === "/api/support/chat") {
+        logLine += " :: [redacted]";
+      } else if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -100,6 +184,19 @@ app.use((req, res, next) => {
       listenOptions,
       () => {
         log(`serving on port ${port}`);
+        // #region agent log
+        try {
+          debugLog({
+            sessionId: "643d35",
+            runId: "startup",
+            hypothesisId: "H1_env",
+            location: "index.ts:listen",
+            message: "server listening",
+            data: { port },
+            timestamp: Date.now(),
+          });
+        } catch (_) {}
+        // #endregion
       },
     )
     .on("error", (err: NodeJS.ErrnoException) => {

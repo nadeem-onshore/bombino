@@ -8,7 +8,6 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/lib/store';
-import { getShipmentByAWB, sampleAWBs } from '@/lib/mockData';
 import { format } from 'date-fns';
 
 export default function Receive() {
@@ -31,13 +30,7 @@ export default function Receive() {
       setError('Please enter a tracking number');
       return;
     }
-
-    const shipment = getShipmentByAWB(awb);
-    if (shipment) {
-      setLocation(`/shipment/${awb}`);
-    } else {
-      setError('Shipment not found');
-    }
+    setLocation(`/shipment/${awb}`);
   };
 
   return (
@@ -84,20 +77,6 @@ export default function Receive() {
           {error && (
             <div className="text-xs text-red-500 mb-2">{error}</div>
           )}
-          <p className="text-xs text-muted-foreground">
-            Try: {sampleAWBs.map((awb, i) => (
-              <button
-                key={awb}
-                onClick={() => {
-                  setTrackingNumber(awb);
-                  setError('');
-                }}
-                className="text-primary font-medium hover:underline"
-              >
-                {awb}{i < sampleAWBs.length - 1 ? ', ' : ''}
-              </button>
-            ))}
-          </p>
         </div>
 
         {isLoggedIn ? (
