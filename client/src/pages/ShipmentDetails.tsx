@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { ArrowLeft, Copy, Check, Plane, Download, Phone, AlertTriangle, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { BottomNav } from '@/components/BottomNav';
 import { StatusBadge } from '@/components/StatusBadge';
 import { TrackingTimeline } from '@/components/TrackingTimeline';
 import type { TrackingEvent } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
 import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 
 interface DocketEvent {
@@ -27,14 +26,28 @@ interface ITDTrackingResult {
   docket_events: DocketEvent[];
 }
 
-function getDocketInfoValue(info: [string, string][], key: string): string {
-  const entry = info.find(([k]) => k.toLowerCase().includes(key.toLowerCase()));
-  return entry ? entry[1] : '';
+function getDocketValue(docketInfo: [string, string][], label: string): string {
+  const entry = docketInfo.find(([key]) => key.trim() === label);
+  return entry?.[1]?.trim() ?? '';
+}
+
+function joinLocationParts(...parts: string[]): string {
+  return parts.map((part) => part.trim()).filter(Boolean).join(', ');
+}
+
+function formatFieldValue(value: string): string {
+  return value.trim();
+}
+
+function withKg(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return /\bkg\b/i.test(trimmed) ? trimmed : `${trimmed} kg`;
 }
 
 function mapEvents(docketEvents: DocketEvent[]): TrackingEvent[] {
-  return docketEvents.map((e) => ({
-    id: e.id,
+  return docketEvents.map((e, index) => ({
+    id: e.id || `${e.event_at}-${index}`,
     status: e.event_description,
     note: e.event_remark || e.event_state || '',
     location: e.event_location || '',
@@ -68,7 +81,7 @@ export default function ShipmentDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background" data-testid="screen-shipment-loading">
+      <div className="min-h-screen bg-background pb-20" data-testid="screen-shipment-loading">
         <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
           <div className="flex items-center h-14 px-4 max-w-md mx-auto">
             <button
@@ -83,13 +96,14 @@ export default function ShipmentDetails() {
         <main className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
+        <BottomNav />
       </div>
     );
   }
 
   if (error || !data || data.length === 0 || data[0].errors) {
     return (
-      <div className="min-h-screen bg-background" data-testid="screen-shipment-not-found">
+      <div className="min-h-screen bg-background pb-20" data-testid="screen-shipment-not-found">
         <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
           <div className="flex items-center h-14 px-4 max-w-md mx-auto">
             <button
@@ -111,6 +125,7 @@ export default function ShipmentDetails() {
             {error instanceof Error ? error.message.replace(/^\d+:\s*/, '') : 'No tracking data available'}
           </p>
         </main>
+        <BottomNav />
       </div>
     );
   }
@@ -119,14 +134,44 @@ export default function ShipmentDetails() {
   const info = result.docket_info ?? [];
   const events = mapEvents(result.docket_events ?? []);
 
-  const currentStatus = getDocketInfoValue(info, 'Status') || 'In Transit';
-  const originCity = getDocketInfoValue(info, 'Origin');
-  const destCity = getDocketInfoValue(info, 'Destination');
-  const bookingDate = getDocketInfoValue(info, 'Booking Date') || getDocketInfoValue(info, 'Created');
+  const currentStatus = getDocketValue(info, 'Status') || 'In Transit';
+  const fromCountry = getDocketValue(info, 'Origin');
+  const toCountry = getDocketValue(info, 'Destination');
+  const fromCity = getDocketValue(info, 'Shipper City');
+  const toCity = getDocketValue(info, 'Consignee City');
+  const bookingDate = getDocketValue(info, 'Booking Date') || getDocketValue(info, 'Created');
+  const serviceName = getDocketValue(info, 'Service Name');
+  const chargeableWeight = withKg(result.chargeable_weight || getDocketValue(info, 'Chargeable Weight'));
+  const shipperName = getDocketValue(info, 'Shipper Name');
+  const shipperCompany = getDocketValue(info, 'Shipper Company');
+  const consigneeName = getDocketValue(info, 'Consignee Name');
+  const consigneeCompany = getDocketValue(info, 'Consignee Company');
+  const consigneeState = getDocketValue(info, 'Consignee State');
+  const consigneeCountry = getDocketValue(info, 'Consignee Country') || toCountry;
+  const fromLine = joinLocationParts(fromCity, fromCountry);
+  const toLine = joinLocationParts(toCity, toCountry);
+  const consigneeLocation = joinLocationParts(toCity, consigneeState, consigneeCountry);
   const isHoldOrException = currentStatus === 'Customs Hold' || currentStatus === 'Exception';
 
+  const shipmentInfoFields = [
+    { label: 'AWB No.', value: formatFieldValue(getDocketValue(info, 'AWB No.') || result.tracking_no || awb) },
+    { label: 'Booking Date', value: formatFieldValue(bookingDate) },
+    { label: 'Service Name', value: formatFieldValue(serviceName) },
+    { label: 'Status', value: formatFieldValue(currentStatus) },
+    { label: 'Chargeable Weight', value: formatFieldValue(chargeableWeight) },
+  ].filter((field) => field.value);
+
+  const partyFields = [
+    { label: 'Shipper Name', value: formatFieldValue(shipperName) },
+    { label: 'Shipper Company', value: formatFieldValue(shipperCompany) },
+    { label: 'Shipper City', value: formatFieldValue(fromCity) },
+    { label: 'Consignee Name', value: formatFieldValue(consigneeName) },
+    { label: 'Consignee Company', value: formatFieldValue(consigneeCompany) },
+    { label: 'Consignee Location', value: formatFieldValue(consigneeLocation) },
+  ].filter((field) => field.value);
+
   return (
-    <div className="min-h-screen bg-background pb-24" data-testid="screen-shipment-details">
+    <div className="min-h-screen bg-background pb-44" data-testid="screen-shipment-details">
       <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 safe-top">
         <div className="flex items-center h-14 px-4 max-w-md mx-auto">
           <button
@@ -142,7 +187,7 @@ export default function ShipmentDetails() {
 
       <main className="px-4 py-5 max-w-md mx-auto">
         <div className="bg-card rounded-2xl border border-border p-4 mb-4 animate-fade-in shadow-sm">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg">{awb}</span>
@@ -161,40 +206,22 @@ export default function ShipmentDetails() {
               <StatusBadge status={currentStatus} className="mt-2" />
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3 py-3 border-y border-border">
+        <div className="bg-card rounded-2xl border border-border p-4 mb-4 animate-fade-in shadow-sm">
+          <div className="flex items-center gap-3">
             <div className="flex-1">
               <p className="text-[10px] text-muted-foreground">From</p>
-              <p className="font-semibold text-sm">USA</p>
-              {originCity && <p className="text-xs text-muted-foreground">{originCity}</p>}
+              <p className="font-semibold text-sm">{fromLine || '—'}</p>
             </div>
             <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center">
               <Plane className="w-5 h-5 text-primary rotate-45" />
             </div>
             <div className="flex-1 text-right">
               <p className="text-[10px] text-muted-foreground">To</p>
-              <p className="font-semibold text-sm">India</p>
-              {destCity && <p className="text-xs text-muted-foreground">{destCity}</p>}
+              <p className="font-semibold text-sm">{toLine || '—'}</p>
             </div>
           </div>
-
-          {bookingDate && (
-            <div className="pt-3 text-sm">
-              <p className="text-[10px] text-muted-foreground">Booking Date</p>
-              <p className="font-semibold text-xs">{bookingDate}</p>
-            </div>
-          )}
-
-          {info.length > 0 && (
-            <div className="mt-3 space-y-1">
-              {info.filter(([k]) => !['status', 'origin', 'destination', 'booking date', 'created'].some(s => k.toLowerCase().includes(s))).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-medium text-right ml-4">{v}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {isHoldOrException && (
@@ -228,34 +255,39 @@ export default function ShipmentDetails() {
           </div>
         )}
 
-        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-          <div className="text-center py-2">
-            <p className="text-xs text-muted-foreground">
-              AWB <span className="font-mono font-semibold text-foreground">{result.tracking_no}</span>
-              {result.forwarding_no && (
-                <> · Fwd <span className="font-mono font-semibold text-foreground">{result.forwarding_no}</span></>
-              )}
-            </p>
-            {result.chargeable_weight && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Chargeable weight: <span className="font-semibold text-foreground">{result.chargeable_weight} kg</span>
-              </p>
+        <div className="bg-card rounded-2xl border border-border p-4 mb-4 shadow-sm">
+          <h2 className="font-semibold text-sm text-foreground mb-4">Shipment Info</h2>
+          <div className="space-y-3">
+            {shipmentInfoFields.map((field) => (
+              <div key={field.label}>
+                <p className="text-[11px] text-muted-foreground">{field.label}</p>
+                <p className="text-sm text-foreground mt-0.5">{field.value}</p>
+              </div>
+            ))}
+            {result.forwarding_no?.trim() && (
+              <div>
+                <p className="text-[11px] text-muted-foreground">Forwarding No.</p>
+                <p className="text-sm text-foreground mt-0.5">{result.forwarding_no.trim()}</p>
+              </div>
             )}
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+          <h2 className="font-semibold text-sm text-foreground mb-4">Parties</h2>
+          <div className="space-y-3">
+            {partyFields.map((field) => (
+              <div key={field.label}>
+                <p className="text-[11px] text-muted-foreground">{field.label}</p>
+                <p className="text-sm text-foreground mt-0.5">{field.value}</p>
+              </div>
+            ))}
           </div>
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 safe-bottom">
-        <div className="flex gap-2 max-w-md mx-auto">
-          <Button
-            variant="outline"
-            className="flex-1 h-11 text-sm rounded-xl border-border"
-            onClick={() => alert('Label download not available')}
-            data-testid="button-download-label"
-          >
-            <Download className="w-4 h-4 mr-1.5" />
-            Label
-          </Button>
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-border p-4 safe-bottom">
+        <div className="flex justify-end gap-2 max-w-md mx-auto">
           <a
             href="https://wa.me/0000000000?text=Hi%20Bombino%20Support"
             target="_blank"
@@ -274,6 +306,16 @@ export default function ShipmentDetails() {
           </a>
         </div>
       </div>
+      <button
+        type="button"
+        className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+        onClick={() => alert('Label download not available')}
+        data-testid="button-download-label"
+      >
+        <Download className="w-4 h-4" />
+        Label
+      </button>
+      <BottomNav />
     </div>
   );
 }

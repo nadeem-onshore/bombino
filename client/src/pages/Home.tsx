@@ -10,6 +10,45 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import whatsAppLogo from '@/assets/WhatsApp.svg.png';
 
+
+function WhyBombinoSection() {
+  return (
+    <section className="pt-2 text-center" data-testid="zone-trust">
+      <div className="px-1 pb-8">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground/90 mb-1">Why <span className="text-primary">Bombino</span>?</h2>
+        <p className="text-xs text-muted-foreground/90 tracking-wide">Trusted worldwide. Reliable, efficient, premium logistics.</p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-x-8 gap-y-8 sm:gap-x-10">
+        <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+          <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+            <span className="metric-number-shimmer">30+</span>
+          </p>
+          <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Years</p>
+          <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Of global logistics excellence</p>
+        </div>
+
+        <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+          <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+            <span className="metric-number-shimmer">140+</span>
+          </p>
+          <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Kilograms</p>
+          <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Shipped around the world per hour</p>
+        </div>
+
+        <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
+          <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
+            <span className="metric-number-shimmer">250+</span>
+          </p>
+          <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Happy Clients</p>
+          <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Sending and receiving shipments worldwide</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -36,9 +75,11 @@ export default function Home() {
 
       <main className="px-4 py-5 max-w-md mx-auto space-y-7">
         {isLoggedIn && (
-          <p className="text-muted-foreground text-sm -mb-2">
-            Welcome back, <span className="font-semibold text-foreground">{user?.fullName?.split(' ')[0] || user?.email}</span>
-          </p>
+          <div className="mb-6">
+            <p className="text-muted-foreground text-sm">
+              Welcome back, <span className="font-semibold text-foreground">{user?.fullName?.split(' ')[0] || user?.email}</span>
+            </p>
+          </div>
         )}
 
         {/* ZONE 1: Hero - Track Shipment (Primary Action) */}
@@ -148,39 +189,7 @@ export default function Home() {
               </a>
             </div>
 
-            {/* Why Bombino - minimal editorial, center-aligned, horizontal metrics */}
-            <section className="pt-2 text-center" data-testid="zone-trust">
-              <div className="px-1 pb-8">
-                <h2 className="text-lg font-semibold tracking-tight text-foreground/90 mb-1">Why <span className="text-primary">Bombino</span>?</h2>
-                <p className="text-xs text-muted-foreground/90 tracking-wide">Trusted worldwide. Reliable, efficient, premium logistics.</p>
-              </div>
-
-              <div className="flex flex-wrap justify-center gap-x-8 gap-y-8 sm:gap-x-10">
-                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
-                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
-                    <span className="metric-number-shimmer">30+</span>
-                  </p>
-                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Years</p>
-                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Of global logistics excellence</p>
-                </div>
-
-                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
-                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
-                    <span className="metric-number-shimmer">140+</span>
-                  </p>
-                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Kilograms</p>
-                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Shipped around the world per hour</p>
-                </div>
-
-                <div className="flex flex-col items-center min-w-0 flex-1 basis-24">
-                  <p className="text-[1.625rem] font-bold tabular-nums tracking-tight leading-none text-foreground">
-                    <span className="metric-number-shimmer">250+</span>
-                  </p>
-                  <p className="text-sm font-medium text-gray-500 tracking-tight mt-0.5 min-h-[2.25rem] flex items-center justify-center">Happy Clients</p>
-                  <p className="text-xs text-muted-foreground mt-3 tracking-wide max-w-[11rem]">Sending and receiving shipments worldwide</p>
-                </div>
-              </div>
-            </section>
+            <WhyBombinoSection />
           </>
         )}
 
@@ -265,6 +274,8 @@ export default function Home() {
             </Button>
           </div>
         )}
+
+        {isLoggedIn && <WhyBombinoSection />}
       </main>
 
       <BottomNav />
