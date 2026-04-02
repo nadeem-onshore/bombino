@@ -129,7 +129,7 @@ export default function Rates() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [, setLocation] = useLocation();
 
-  const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
+  const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('kg');
   const [weight, setWeight] = useState('2');
   const [pieces, setPieces] = useState('1');
 
@@ -188,7 +188,7 @@ export default function Rates() {
   const handleGetRates = () => {
     setApiError('');
     const w = parseFloat(weight) || 1;
-    const weightLb = weightUnit === 'lb' ? w : kgToLb(w);
+    const weightKg = weightUnit === 'kg' ? w : lbToKg(w);
 
     rateMutation.mutate({
       product_code: 'SPX',
@@ -196,7 +196,7 @@ export default function Rates() {
       booking_date: new Date().toISOString().split('T')[0],
       origin_code: 'IN',
       pcs: String(parseInt(pieces) || 1),
-      actual_weight: String(weightLb.toFixed(2)),
+      actual_weight: String(weightKg.toFixed(2)),
     });
   };
 
