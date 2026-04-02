@@ -5,6 +5,7 @@ import { useLocation, useSearch } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { BottomNav } from '@/components/BottomNav';
 import { CorridorRouteInfo } from '@/components/CorridorRouteInfo';
+import { KycUpload, type KycUploadResult } from '@/components/KycUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,6 +67,13 @@ interface CreateShipmentPayload {
   consignee_zip_code: string;
   docket_items: { actual_weight: string; length: string; width: string; height: string; number_of_boxes: string }[];
   free_form_line_items?: FreeFormLineItem[];
+  kyc_details?: Array<{
+    document_type: string;
+    document_no: string;
+    document_sub_type: string;
+    document_name: string;
+    file_path: string;
+  }>;
 }
 
 interface CreateShipmentResponse {
@@ -132,6 +140,8 @@ export default function CreateShipment() {
   const [invoiceQty, setInvoiceQty] = useState('1');
   const [invoiceUnitWeight, setInvoiceUnitWeight] = useState('');
   const [invoiceUnitRate, setInvoiceUnitRate] = useState('');
+
+  const [kycResult, setKycResult] = useState<KycUploadResult | null>(null);
 
   const [stepError, setStepError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
@@ -392,6 +402,7 @@ export default function CreateShipment() {
       if (!senderCity.trim()) e.senderCity = true;
       if (!senderState.trim()) e.senderState = true;
       if (!senderZip.trim()) e.senderZip = true;
+      if (!kycResult) e.kycMissing = true;
       if (Object.keys(e).length) {
         setFieldErrors(e);
         return;
@@ -494,10 +505,15 @@ export default function CreateShipment() {
       shipper_state: senderState,
       shipper_country: 'IN',
       shipper_zip_code: senderZip,
-      // TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented
       shipper_gstin_type: 'AADHAAR NUMBER',
-      // TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented
-      shipper_gstin_no: '123456789012',
+      shipper_gstin_no: kycResult!.document_no,
+      kyc_details: [{
+        document_type:     kycResult!.document_type,
+        document_no:       kycResult!.document_no,
+        document_sub_type: 'doc_1',
+        document_name:     '',
+        file_path:         kycResult!.file_path,
+      }],
       consignee_name: receiverName,
       consignee_company_name: receiverCompany || receiverName,
       consignee_contact_no: receiverPhone,
@@ -712,22 +728,13 @@ export default function CreateShipment() {
               </div>
             </div>
 
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">KYC Details</Label>
-              <p className="text-[10px] text-muted-foreground mb-2">Required for Indian customs export compliance.</p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">KYC Type</span>
-                  {/* TODO: shipper_gstin_type hardcoded — update when KYC collection is implemented */}
-                  <span className="font-medium text-foreground">AADHAAR NUMBER</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Aadhaar No.</span>
-                  {/* TODO: shipper_gstin_no hardcoded — update when KYC collection is implemented */}
-                  <span className="font-medium text-foreground">123456789012</span>
-                </div>
-              </div>
-            </div>
+            <KycUpload
+              onValidChange={setKycResult}
+              fieldErrors={{
+                document_no: !!fieldErrors.kycMissing,
+                file: !!fieldErrors.kycMissing,
+              }}
+            />
 
             {stepError && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">

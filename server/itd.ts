@@ -131,6 +131,15 @@ export interface CreateShipmentPayload {
   consignee_zip_code: string;
   docket_items: DocketItem[];
   free_form_line_items?: FreeFormLineItem[];
+  kyc_details?: KYCDetail[];
+}
+
+export interface KYCDetail {
+  document_type: string;
+  document_no: string;
+  document_sub_type: string;
+  document_name: string;
+  file_path: string;
 }
 
 export interface CreateShipmentResponse {

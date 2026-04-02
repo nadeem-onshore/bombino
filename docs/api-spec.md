@@ -249,71 +249,74 @@ URL : https://admin.bombinoexp.com/docket_api/create_docket
 
 Request Body : 
 {
-    "tracking_no": "",
-    "product_code": "SPX",
-    "destination_code": "US",
-    "booking_date": "2026-02-13",
-    "booking_time": "15:30:00",
-    "pcs": "1",
-    "shipment_value": "1000",
-    "shipment_value_currency": "INR",
-    "actual_weight": "10",
-    "shipment_invoice_no": "TESTINV01",
-    "shipment_invoice_date": "2026-02-13",
-    "shipment_content": "BOOKS",
-    "remark": "TESTREMARK",
-    "new_docket_free_form_invoice": "1",
-    "free_form_invoice_type_id": "1",
-    "free_form_currency": "INR",
-    "terms_of_trade": "FOB",
-    "entry_type": 2,
-    "api_service_code": "BOMBINO PREMIUM DDP SERVICE",
-    "shipper_name": "SHIPPER NAME",
-    "shipper_company_name": "SHIPPER COMPANY NAME",
-    "shipper_contact_no": "9898989898",
-    "shipper_email": "test@test.com",
-    "shipper_address_line_1": "Address 1",
-    "shipper_address_line_2": "Address 2",
-    "shipper_address_line_3": "Address 3",
-    "shipper_city": "Mumbai",
-    "shipper_state": "Maharashtra",
-    "shipper_country": "IN",
-    "shipper_zip_code": "400086",
-    "shipper_gstin_type": "AADHAAR NUMBER",
-    "shipper_gstin_no": "123456789012",
-    "consignee_name": "CONSIGNEE NAME",
-    "consignee_company_name": "CONSIGNEE COMPANY NAME",
-    "consignee_contact_no": "9999999999",
-    "consignee_email": "test@test.com",
-    "consignee_address_line_1": "Address 1",
-    "consignee_address_line_2": "Address 2",
-    "consignee_address_line_3": "Address 3",
-    "consignee_city": "NY",
-    "consignee_state": "NY",
-    "consignee_country": "US",
-    "consignee_zip_code": "10001",
-    "docket_items": [
-        {
-            "actual_weight": "10",
-            "length": "6",
-            "width": "7",
-            "height": "8",
-            "number_of_boxes": "1"
-        }
-    ],
-    "free_form_line_items": [
-        {
-            "total": "1.00",
-            "no_of_packages": "1",
-            "box_no": "1",
-            "rate": "100",
-            "hscode": "456789",
-            "description": "GIFTS",
-            "unit_of_measurement": "PCS",
-            "unit_weight": "0.00",
-            "igst_amount": "0.00"
-        }
-    ]
+	"product_code": "SPX",
+	"destination_code": "US",
+	"booking_date": "2026-04-01",
+	"booking_time": "01:08:00",
+	"pcs": "1",
+	"shipment_value": "1332.99",
+	"shipment_value_currency": "USD",
+	"actual_weight": "2.00",
+	"shipment_invoice_no": "TESTINV01",
+	"shipment_invoice_date": "2026-04-01",
+	"shipment_content": "gift",
+	"new_docket_free_form_invoice": "1",
+	"free_form_invoice_type_id": "1",
+	"free_form_currency": "USD",
+	"terms_of_trade": "FOB",
+	"entry_type": 2,
+	"api_service_code": "POSTAL",
+	"shipper_name": "CUSTOMER MOBILE APP",
+	"shipper_company_name": "a",
+	"shipper_contact_no": "za",
+	"shipper_email": "a",
+	"shipper_address_line_1": "q",
+	"shipper_city": "q",
+	"shipper_state": "q",
+	"shipper_country": "IN",
+	"shipper_zip_code": "400061",
+	"shipper_gstin_type": "AADHAAR NUMBER",
+	"shipper_gstin_no": "123456789012",
+	"consignee_name": "a",
+	"consignee_company_name": "a",
+	"consignee_contact_no": "123",
+	"consignee_email": "qwe",
+	"consignee_address_line_1": "q",
+	"consignee_city": "q",
+	"consignee_state": "q",
+	"consignee_country": "US",
+	"consignee_zip_code": "1001",
+	"kyc_details": [
+  {
+    "document_type": "Aadhaar Number",
+    "document_no": "123456789123",
+    "document_sub_type": "doc_1",
+    "document_name": "",
+    "file_path": "https://google.com/media//2024/02/2024-02-03-17-11-341.jpg"
+  }
+],
+	"docket_items": [
+		{
+			"actual_weight": "2.00",
+			"length": "12",
+			"width": "12",
+			"height": "12",
+			"number_of_boxes": "1"
+		}
+	],
+	"free_form_line_items": [
+		{
+			"total": "50.00",
+			"no_of_packages": "1",
+			"box_no": "1",
+			"rate": "50",
+			"hscode": "456789",
+			"description": "GIFTS",
+			"unit_of_measurement": "PCS",
+			"unit_weight": "12",
+			"igst_amount": "0.00"
+		}
+	]
 }
 
 

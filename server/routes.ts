@@ -2,14 +2,30 @@ import type { Express, Request, Response } from "express";
 import type { Server } from "http";
 import fs from "fs";
 import path from "path";
+import multer from "multer";
+import { z } from "zod";
 import { itdClient } from "./itd";
 import type { CreateShipmentPayload, RateParams } from "./itd";
+import { storage } from "./storage";
 import { handleChat } from "./supportAgent";
 import type { ChatMessage } from "./supportTypes";
 import {
   SUPPORT_CHAT_MAX_MESSAGES,
   SUPPORT_CHAT_MAX_CONTENT_LENGTH,
 } from "./supportTypes";
+
+const kycUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = new Set(["application/pdf", "image/jpeg", "image/png"]);
+    if (allowed.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF, JPEG, and PNG files are accepted."));
+    }
+  },
+});
 
 // ─── Route registration ───────────────────────────────────────────────────────
 
@@ -203,6 +219,69 @@ export async function registerRoutes(
       console.error("[POST /api/shipments] createShipment failed:", err);
       const message = err instanceof Error ? err.message : "Shipment creation failed";
       res.status(502).json({ message });
+    }
+  });
+
+  // ── KYC: Upload document ──────────────────────────────────────────────────
+
+  // POST /api/kyc/upload — upload KYC document; returns { id, file_path }
+  app.post(
+    "/api/kyc/upload",
+    kycUpload.single("file"),
+    async (req: Request, res: Response) => {
+      if (!req.file) {
+        res.status(400).json({ message: "No file uploaded." });
+        return;
+      }
+
+      const bodySchema = z.object({
+        document_type: z.string().min(1, "document_type is required"),
+        document_no: z.string().regex(/^\d{12}$/, "Aadhaar must be exactly 12 digits"),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: parsed.error.issues[0].message });
+        return;
+      }
+
+      try {
+        const saved = await storage.saveKycDocument({
+          documentType:     parsed.data.document_type,
+          documentNo:       parsed.data.document_no,
+          originalFilename: req.file.originalname,
+          mimeType:         req.file.mimetype,
+          fileSizeBytes:    req.file.size,
+          fileData:         req.file.buffer.toString("base64"),
+        });
+
+        const base = (process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 5000}`).replace(/\/$/, "");
+        res.json({ id: saved.id, file_path: `${base}/api/kyc/documents/${saved.id}/file` });
+      } catch (err) {
+        console.error("[POST /api/kyc/upload] failed:", err);
+        res.status(500).json({ message: "Failed to save KYC document." });
+      }
+    }
+  );
+
+  // GET /api/kyc/documents/:id/file — serve KYC document (no auth; ITD must be able to fetch)
+  app.get("/api/kyc/documents/:id/file", async (req: Request, res: Response) => {
+    try {
+      const doc = await storage.getKycDocument(req.params.id);
+      if (!doc) {
+        res.status(404).json({ message: "Document not found." });
+        return;
+      }
+      const buf = Buffer.from(doc.fileData, "base64");
+      res.set({
+        "Content-Type":        doc.mimeType,
+        "Content-Length":      String(buf.length),
+        "Cache-Control":       "private, max-age=3600",
+        "Content-Disposition": `inline; filename="${doc.originalFilename}"`,
+      });
+      res.send(buf);
+    } catch (err) {
+      console.error("[GET /api/kyc/documents/:id/file] failed:", err);
+      res.status(500).json({ message: "Failed to retrieve document." });
     }
   });
 
