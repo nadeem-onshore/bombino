@@ -5,6 +5,7 @@ import { Shipment, shipments as initialShipments, Notification, notifications as
 export interface AuthUser {
   id: string;
   customerId: string;
+  code: string;
   email: string;
   fullName: string;
   username: string;

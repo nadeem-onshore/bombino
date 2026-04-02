@@ -7,16 +7,16 @@ Request Body :
     "password": "Welcome@2026"
 }
 
-Response : 
 {
 	"success": true,
 	"data": {
 		"id": "3903",
 		"customer_id": "74572",
+		"code": "72497",
 		"email": "uat@bombinoexp.com",
 		"user_fullname": "CUSTOMER MOBILE APP",
 		"role": "customer",
-		"token": "ITDSERVICESCENTER1|NzVkdFlzTnIxQyt0aW5Pa1Z6SWoyS3pNMGI0UDlaMFduZzluMG5Sck1uVT0=",
+		"token": "ITDSERVICESCENTER1|RmRINUVXRlBHbWV4YllNWkF6d2pZMmhPY0RhY2h0UUE5NHBScm5DTzdZQT0=",
 		"username": "CUSTOMER MOBILE APP",
 		"success": true,
 		"errors": []
@@ -342,6 +342,13 @@ Response :
 	],
 	"parcels": [],
 	"Response Code": 200
+}
+
+Response when Auth Token is expired :
+{
+	"success": false,
+	"errors": "AUTH TOKEN EXPIRED. PLEASE GENERATE NEW AUTH TOKEN",
+	"Response Code": 500
 }
 
 

@@ -36,6 +36,7 @@ export default function Signup() {
       const newUser: AuthUser = {
         id: `user-${Math.random().toString(36).slice(2)}`,
         customerId: '',
+        code: '',
         email,
         fullName: `${firstName} ${lastName}`,
         username: email,

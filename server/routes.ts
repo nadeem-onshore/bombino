@@ -92,7 +92,7 @@ export async function registerRoutes(
         origin_code: origin_code ?? "IN",
         pcs: pcs ?? "1",
         actual_weight,
-      }, req.session.user?.email);
+      }, req.session.user?.email, req.session.user?.code);
       res.json(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Rate calculation failed";
@@ -196,9 +196,11 @@ export async function registerRoutes(
     }
 
     try {
-      const data = await itdClient.createShipment(payload, req.session.itdToken);
+      const token = await itdClient.getToken();
+      const data = await itdClient.createShipment(payload, token);
       res.json(data);
     } catch (err) {
+      console.error("[POST /api/shipments] createShipment failed:", err);
       const message = err instanceof Error ? err.message : "Shipment creation failed";
       res.status(502).json({ message });
     }

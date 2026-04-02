@@ -11,6 +11,7 @@ const APP_BASE = "https://app.bombinoexp.com";
 export interface ITDUserInfo {
   id: string;
   customerId: string;
+  code: string;
   email: string;
   fullName: string;
   username: string;
@@ -22,6 +23,7 @@ export interface ITDAuthResponse {
   data: {
     id: string;
     customer_id: string;
+    code: string;
     email: string;
     user_fullname: string;
     role: string;
@@ -185,8 +187,8 @@ class ITDClient {
     }
 
     this.token = json.data.token;
-    // Cache for 8 hours (conservative; actual TTL unknown)
-    this.tokenExpiry = Date.now() + 8 * 60 * 60 * 1000;
+    // Cache for 4 hours (ITD tokens expire after ~4h)
+    this.tokenExpiry = Date.now() + 4 * 60 * 60 * 1000;
     return this.token;
   }
 
@@ -219,6 +221,7 @@ class ITDClient {
     const user: ITDUserInfo = {
       id: json.data.id,
       customerId: json.data.customer_id,
+      code: json.data.code,
       email: json.data.email,
       fullName: json.data.user_fullname,
       username: json.data.username,
@@ -280,11 +283,15 @@ class ITDClient {
     });
 
     if (res.status === 401) {
+      const errorBody = await res.text().catch(() => "");
+      console.error(`[ITD createShipment] 401 Unauthorized`, errorBody);
       throw new Error("Session expired — please log in again");
     }
     if (!res.ok) {
+      const errorBody = await res.text().catch(() => "");
+      console.error(`[ITD createShipment] ${res.status} ${res.statusText}`, errorBody);
       throw new Error(
-        `ITD create shipment error: ${res.status} ${res.statusText}`
+        `ITD create shipment error: ${res.status} ${res.statusText} — ${errorBody}`
       );
     }
 
@@ -292,7 +299,7 @@ class ITDClient {
   }
 
   // POST /docket_api/customer_rate_cals (multipart/form-data, different domain)
-  async getRates(params: RateParams, userEmail?: string): Promise<unknown> {
+  async getRates(params: RateParams, userEmail?: string, customerCode?: string): Promise<unknown> {
     const username = Buffer.from(
       userEmail ?? process.env.ITD_EMAIL ?? ""
     ).toString("base64");
@@ -308,7 +315,7 @@ class ITDClient {
     form.append("origin_code", params.origin_code);
     form.append("pcs", params.pcs);
     form.append("actual_weight", params.actual_weight);
-    form.append("customer_code", "72497");
+    form.append("customer_code", customerCode ?? process.env.ITD_CUSTOMER_CODE ?? "");
     form.append("username", username);
     form.append("password", password);
 
