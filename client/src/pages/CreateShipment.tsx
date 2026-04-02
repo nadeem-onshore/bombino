@@ -9,6 +9,7 @@ import { KycUpload, type KycUploadResult } from '@/components/KycUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
 import { Shipment, TrackingEvent, lbToKg, inToCm } from '@/lib/mockData';
 import { apiRequest } from '@/lib/queryClient';
@@ -140,6 +141,7 @@ export default function CreateShipment() {
   const [invoiceQty, setInvoiceQty] = useState('1');
   const [invoiceUnitWeight, setInvoiceUnitWeight] = useState('');
   const [invoiceUnitRate, setInvoiceUnitRate] = useState('');
+  const [productType, setProductType] = useState<'COMMERCIAL' | 'CSB V' | 'DOX' | 'SPX'>('SPX');
 
   const [kycResult, setKycResult] = useState<KycUploadResult | null>(null);
 
@@ -477,8 +479,7 @@ export default function CreateShipment() {
     const total = (qty * rate).toFixed(2);
 
     const payload: CreateShipmentPayload = {
-      // TODO: product_code hardcoded — update when ITD provides final mapping
-      product_code: 'SPX',
+      product_code: productType,
       destination_code: 'US',
       booking_date: todayStr,
       booking_time: timeStr,
@@ -1074,10 +1075,19 @@ export default function CreateShipment() {
             <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
               <Label className="text-sm font-semibold mb-3 block">Service Details</Label>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Product Code</span>
-                  {/* TODO: product_code hardcoded — update when ITD provides final mapping */}
-                  <span className="font-medium text-foreground">SPX</span>
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Product Type</span>
+                  <Select value={productType} onValueChange={(v) => setProductType(v as typeof productType)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="COMMERCIAL">COMMERCIAL</SelectItem>
+                      <SelectItem value="CSB V">CSB V</SelectItem>
+                      <SelectItem value="DOX">DOX</SelectItem>
+                      <SelectItem value="SPX">SPX</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex justify-between text-sm gap-2">
                   <span className="text-muted-foreground shrink-0">Service</span>
