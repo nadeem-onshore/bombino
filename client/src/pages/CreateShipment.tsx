@@ -399,7 +399,7 @@ export default function CreateShipment() {
     if (currentStep === 1) {
       const e: Record<string, boolean> = {};
       if (!senderName.trim()) e.senderName = true;
-      if (!senderPhone.trim()) e.senderPhone = true;
+      if (!/^\d{10}$/.test(senderPhone.trim())) e.senderPhone = true;
       if (!senderAddress.trim()) e.senderAddress = true;
       if (!senderCity.trim()) e.senderCity = true;
       if (!senderState.trim()) e.senderState = true;
@@ -413,7 +413,7 @@ export default function CreateShipment() {
     if (currentStep === 2) {
       const e: Record<string, boolean> = {};
       if (!receiverName.trim()) e.receiverName = true;
-      if (!receiverPhone.trim()) e.receiverPhone = true;
+      if (!/^\d{10}$/.test(receiverPhone.trim())) e.receiverPhone = true;
       if (!receiverAddress.trim()) e.receiverAddress = true;
       if (!receiverCity.trim()) e.receiverCity = true;
       if (!receiverState.trim()) e.receiverState = true;
@@ -651,7 +651,8 @@ export default function CreateShipment() {
                   <Input
                     value={senderPhone}
                     onChange={(e) => {
-                      setSenderPhone(e.target.value);
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setSenderPhone(digits);
                       clearFieldError('senderPhone');
                     }}
                     placeholder="+91"
@@ -659,7 +660,7 @@ export default function CreateShipment() {
                     data-testid="input-sender-phone"
                   />
                   {fieldErrors.senderPhone && (
-                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                    <p className="text-xs text-red-600 mt-1">Must be exactly 10 digits</p>
                   )}
                 </div>
               </div>
@@ -791,7 +792,8 @@ export default function CreateShipment() {
                   <Input
                     value={receiverPhone}
                     onChange={(e) => {
-                      setReceiverPhone(e.target.value);
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setReceiverPhone(digits);
                       clearFieldError('receiverPhone');
                     }}
                     placeholder="+1"
@@ -799,7 +801,7 @@ export default function CreateShipment() {
                     data-testid="input-receiver-phone"
                   />
                   {fieldErrors.receiverPhone && (
-                    <p className="text-xs text-red-600 mt-1">This field is required</p>
+                    <p className="text-xs text-red-600 mt-1">Must be exactly 10 digits</p>
                   )}
                 </div>
                 <div>
